@@ -581,17 +581,16 @@ export default function App() {
         }}
       >
         <div>
-          <h1
-            style={{
-              color: appStyles.accent,
-              marginBottom: "6px",
-              marginTop: 0,
-              fontSize: mobileStack ? "28px" : "34px",
-            }}
-          >
-            🎳 TEN BACK PRECISION
-          </h1>
-          <p
+<h1
+  style={{
+    color: appStyles.accent,
+    marginBottom: "6px",
+    marginTop: 0,
+    fontSize: mobileStack ? "28px" : "34px",
+  }}
+>
+  🎳 TEN BACK PRECISION v416
+</h1>          <p
             style={{
               color: appStyles.muted,
               marginTop: 0,
@@ -599,7 +598,7 @@ export default function App() {
               maxWidth: "700px",
             }}
           >
-            Bowling LLC tracker for expenses, income, receipts, and reports.
+            Bowling LLC tracker for expenses, income, receipts, and reports. BUILD V416.
           </p>
         </div>
 

@@ -598,7 +598,7 @@ export default function App() {
               maxWidth: "700px",
             }}
           >
-            Bowling LLC tracker for expenses, income, receipts, and reports. BUILD V416.
+            Bowling LLC tracker for expenses, income, receipts, and reports. BUILD V416
           </p>
         </div>
 

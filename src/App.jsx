@@ -14,8 +14,6 @@ import {
   doc,
   getDocs,
   getFirestore,
-  orderBy,
-  query,
   serverTimestamp,
   updateDoc,
   where,
@@ -47,7 +45,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const APP_VERSION = "v1001";
+const APP_VERSION = "v1002";
 const MAX_RECEIPT_SIZE_MB = 5;
 const CHART_COLORS = ["#7dd3fc", "#38bdf8", "#60a5fa", "#818cf8", "#a78bfa", "#f472b6", "#f59e0b"];
 
@@ -59,13 +57,15 @@ const categories = [
   "Food",
   "Practice",
   "Supplies",
+  "Marketing",
   "Other",
 ];
 
 const incomeSources = [
   "Tournament Winnings",
   "League Payout",
-  "Side Pots",
+  "Side Sales",
+  "Sponsorship",
   "Refund",
   "Other",
 ];
@@ -177,10 +177,13 @@ function App() {
     if (!user?.uid) return;
     setDataLoading(true);
     try {
-      const expensesQuery = query(collection(db, "expenses"), where("uid", "==", user.uid));
-      const incomeQuery = query(collection(db, "income"), where("uid", "==", user.uid));
+      const expensesQuery = collection(db, "expenses");
+      const incomeQuery = collection(db, "income");
 
-      const [expenseSnap, incomeSnap] = await Promise.all([getDocs(expensesQuery), getDocs(incomeQuery)]);
+      const [expenseSnap, incomeSnap] = await Promise.all([
+        getDocs(queryByUid(expensesQuery, user.uid)),
+        getDocs(queryByUid(incomeQuery, user.uid)),
+      ]);
 
       const loadedExpenses = expenseSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
@@ -473,20 +476,20 @@ function App() {
     boxSizing: "border-box",
   };
 
-const selectStyle = {
-  ...fieldStyle,
-  background: "#0f172a",
-  color: "#e5f0ff",
-  border: "1px solid rgba(160, 202, 255, 0.25)",
-  appearance: "none",
-  WebkitAppearance: "none",
-  MozAppearance: "none",
-};
+  const selectStyle = {
+    ...fieldStyle,
+    background: "#0f172a",
+    color: "#e5f0ff",
+    border: "1px solid rgba(160, 202, 255, 0.25)",
+    appearance: "none",
+    WebkitAppearance: "none",
+    MozAppearance: "none",
+  };
 
-const optionStyle = {
-  background: "#0f172a",
-  color: "#e5f0ff",
-};
+  const optionStyle = {
+    background: "#0f172a",
+    color: "#e5f0ff",
+  };
 
   const buttonStyle = {
     border: "none",
@@ -508,24 +511,23 @@ const optionStyle = {
     );
   }
 
-return (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      flexDirection: "column",
-      textAlign: "center",
-      marginBottom: 14,
-      gap: 6,
-    }}
-  >
-    <div style={{ fontSize: 22, fontWeight: 800 }}>{title}</div>
-    {subtitle ? (
-      <div style={{ color: appStyles.muted }}>{subtitle}</div>
-    ) : null}
-  </div>
-);  }
+  function SectionTitle({ title, subtitle }) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+          marginBottom: 10,
+          gap: 6,
+        }}
+      >
+        <div style={{ fontSize: 22, fontWeight: 800 }}>{title}</div>
+        {subtitle ? <div style={{ color: appStyles.muted }}>{subtitle}</div> : null}
+      </div>
+    );
+  }
 
   function ReceiptCard({ item }) {
     return (
@@ -609,13 +611,13 @@ return (
               fontSize: mobileStack ? 28 : 34,
             }}
           >
-            🎳 TEN BACK PRECISION v 1.0
+            🎳 TEN BACK PRECISION {APP_VERSION}
           </h1>
           <p style={{ color: appStyles.muted, marginTop: 0, marginBottom: 18, maxWidth: 700 }}>
             Bowling LLC tracker for expenses, income, receipts, and reports. BUILD {APP_VERSION}
           </p>
 
-          <div style={{ display: "grid", gap: 8 }}>
+          <div style={{ display: "grid", gap: 12 }}>
             <input
               placeholder="Email"
               value={authForm.email}
@@ -710,53 +712,35 @@ return (
         </div>
 
         <div style={{ ...appStyles.card, marginBottom: 18 }}>
-          <SectionTitle
-            title="Quick Actions"
-            subtitle="Add income, expenses, and receipts without hunting through menus."
-            right={
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent }}>Add Expense</button>
-                <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}>Add Income</button>
-                <button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>Upload Receipt</button>
-              </div>
-            }
-          />
+          <SectionTitle title="Quick Actions" subtitle="Add income, expenses, and receipts without hunting through menus." />
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginBottom: 14 }}>
+            <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent }}>Add Expense</button>
+            <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}>Add Income</button>
+            <button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>Upload Receipt</button>
+          </div>
 
           <div
             style={{
               display: "grid",
               gridTemplateColumns: mobileStack ? "1fr" : "repeat(3, minmax(0, 1fr))",
-              gap: 8,
+              gap: 10,
               marginBottom: 14,
             }}
           >
-<select
-  value={filterMonth}
-  onChange={(e) => setFilterMonth(e.target.value)}
-  style={selectStyle}
->
-  <option value="all" style={optionStyle}>All Months</option>
-  {months.map((month) => (
-    <option key={month} value={month} style={optionStyle}>
-      {month}
-    </option>
-  ))}
-</select>
-
-<select
-  value={filterCategory}
-  onChange={(e) => setFilterCategory(e.target.value)}
-  style={selectStyle}
->
-  <option value="all" style={optionStyle}>All Categories</option>
-  {categories.map((category) => (
-    <option key={category} value={category} style={optionStyle}>
-      {category}
-    </option>
-  ))}
-</select>            
-
-<input placeholder="Search notes, categories, amounts" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={fieldStyle} />
+            <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} style={selectStyle}>
+              <option value="all" style={optionStyle}>All Months</option>
+              {months.map((month) => (
+                <option key={month} value={month} style={optionStyle}>{month}</option>
+              ))}
+            </select>
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={selectStyle}>
+              <option value="all" style={optionStyle}>All Categories</option>
+              {categories.map((category) => (
+                <option key={category} value={category} style={optionStyle}>{category}</option>
+              ))}
+            </select>
+            <input placeholder="Search notes, categories, amounts" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={fieldStyle} />
           </div>
         </div>
 
@@ -816,26 +800,20 @@ return (
             >
               <div style={appStyles.card}>
                 <SectionTitle title={editingExpenseId ? "Edit Expense" : "Add Expense"} subtitle="Receipt-ready expense entry." />
-                <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ display: "grid", gap: 10 }}>
                   <input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
-                  <select
-  value={expenseForm.category}
-  onChange={(e) => setExpenseForm((prev) => ({ ...prev, category: e.target.value }))}
-  style={selectStyle}
->
-  {categories.map((category) => (
-    <option key={category} value={category} style={optionStyle}>
-      {category}
-    </option>
-  ))}
-</select>
+                  <select value={expenseForm.category} onChange={(e) => setExpenseForm((prev) => ({ ...prev, category: e.target.value }))} style={selectStyle}>
+                    {categories.map((category) => (
+                      <option key={category} value={category} style={optionStyle}>{category}</option>
+                    ))}
+                  </select>
                   <input type="number" step="0.01" placeholder="Amount" value={expenseForm.amount} onChange={(e) => setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))} style={fieldStyle} />
                   <input placeholder="Note" value={expenseForm.note} onChange={(e) => setExpenseForm((prev) => ({ ...prev, note: e.target.value }))} style={fieldStyle} />
                   <label style={{ ...fieldStyle, display: "grid", placeItems: "center", cursor: "pointer" }}>
                     {expenseForm.receipt ? "Receipt added ✓" : "Upload receipt"}
                     <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => void handleReceiptFile(e.target.files?.[0])} />
                   </label>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                     <button type="button" onClick={saveExpense} style={{ ...buttonStyle, background: appStyles.accent }}>
                       {editingExpenseId ? "Update Expense" : "Save Expense"}
                     </button>
@@ -848,22 +826,16 @@ return (
 
               <div style={appStyles.card}>
                 <SectionTitle title={editingIncomeId ? "Edit Income" : "Add Income"} subtitle="Track winnings, payouts, and side money." />
-                <div style={{ display: "grid", gap: 8 }}>
+                <div style={{ display: "grid", gap: 10 }}>
                   <input type="date" value={incomeForm.date} onChange={(e) => setIncomeForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
-<select
-  value={incomeForm.source}
-  onChange={(e) => setIncomeForm((prev) => ({ ...prev, source: e.target.value }))}
-  style={selectStyle}
->
-  {incomeSources.map((source) => (
-    <option key={source} value={source} style={optionStyle}>
-      {source}
-    </option>
-  ))}
-</select>
+                  <select value={incomeForm.source} onChange={(e) => setIncomeForm((prev) => ({ ...prev, source: e.target.value }))} style={selectStyle}>
+                    {incomeSources.map((source) => (
+                      <option key={source} value={source} style={optionStyle}>{source}</option>
+                    ))}
+                  </select>
                   <input type="number" step="0.01" placeholder="Amount" value={incomeForm.amount} onChange={(e) => setIncomeForm((prev) => ({ ...prev, amount: e.target.value }))} style={fieldStyle} />
                   <input placeholder="Note" value={incomeForm.note} onChange={(e) => setIncomeForm((prev) => ({ ...prev, note: e.target.value }))} style={fieldStyle} />
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
                     <button type="button" onClick={saveIncome} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}>
                       {editingIncomeId ? "Update Income" : "Save Income"}
                     </button>
@@ -885,7 +857,7 @@ return (
               <div style={appStyles.card}>
                 <SectionTitle title="Recent Activity" subtitle="Latest movement across income and expenses." />
                 {recentActivity.length === 0 ? (
-                  <div style={{ color: appStyles.muted }}>No activity yet. Feed the beast some data.</div>
+                  <div style={{ color: appStyles.muted, textAlign: "center" }}>No activity yet. Feed the beast some data.</div>
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
                     {recentActivity.map((item) => (
@@ -915,13 +887,18 @@ return (
               </div>
 
               <div style={appStyles.card}>
-                <SectionTitle title="Receipts Snapshot" subtitle="Newest receipt-backed expenses." right={<button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>Open Gallery</button>} />
+                <SectionTitle title="Receipts Snapshot" subtitle="Newest receipt-backed expenses." />
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                  <button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>
+                    Open Gallery
+                  </button>
+                </div>
                 {receipts.length === 0 ? (
-                  <div style={{ color: appStyles.muted }}>No receipts yet. Upload one and this section wakes right up.</div>
+                  <div style={{ color: appStyles.muted, textAlign: "center" }}>No receipts yet. Upload one and this section wakes right up.</div>
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
                     {receipts.slice(0, 4).map((item) => (
-                      <div key={item.id} style={{ display: "grid", gridTemplateColumns: "88px 1fr auto", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 10 }}>
+                      <div key={item.id} style={{ display: "grid", gridTemplateColumns: "88px 1fr auto", gap: 10, alignItems: "center", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 10 }}>
                         <img src={item.receipt} alt="Receipt thumbnail" style={{ width: 88, height: 88, objectFit: "cover", borderRadius: 12 }} />
                         <div>
                           <div style={{ fontWeight: 700 }}>{item.category}</div>
@@ -939,7 +916,7 @@ return (
           <div style={appStyles.card}>
             <SectionTitle title="Receipt Gallery" subtitle="Every receipt-backed expense in one place." />
             {receipts.length === 0 ? (
-              <div style={{ color: appStyles.muted }}>No receipts uploaded yet. Add one from the expense form above.</div>
+              <div style={{ color: appStyles.muted, textAlign: "center" }}>No receipts uploaded yet. Add one from the expense form above.</div>
             ) : (
               <div
                 style={{
@@ -966,7 +943,7 @@ return (
             }}
           >
             <div>
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Expenses</div>
+              <div style={{ fontWeight: 800, marginBottom: 10, textAlign: "center" }}>Expenses</div>
               <div style={{ display: "grid", gap: 10 }}>
                 {filteredExpenses.slice(0, 8).map((item) => (
                   <div key={item.id} style={{ padding: 12, borderRadius: 14, background: "rgba(255,255,255,0.06)" }}>
@@ -978,7 +955,7 @@ return (
                       </div>
                       <div style={{ fontWeight: 800 }}>{currency(item.amount)}</div>
                     </div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -1006,7 +983,7 @@ return (
             </div>
 
             <div>
-              <div style={{ fontWeight: 800, marginBottom: 10 }}>Income</div>
+              <div style={{ fontWeight: 800, marginBottom: 10, textAlign: "center" }}>Income</div>
               <div style={{ display: "grid", gap: 10 }}>
                 {filteredIncome.slice(0, 8).map((item) => (
                   <div key={item.id} style={{ padding: 12, borderRadius: 14, background: "rgba(255,255,255,0.06)" }}>
@@ -1018,7 +995,7 @@ return (
                       </div>
                       <div style={{ fontWeight: 800, color: appStyles.good }}>{currency(item.amount)}</div>
                     </div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", justifyContent: "center" }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -1093,6 +1070,16 @@ return (
       ) : null}
     </div>
   );
+}
+
+function queryByUid(collectionRef, uid) {
+  return whereQuery(collectionRef, uid);
+}
+
+function whereQuery(collectionRef, uid) {
+  return import.meta.env.DEV
+    ? query(collectionRef, where("uid", "==", uid))
+    : query(collectionRef, where("uid", "==", uid));
 }
 
 export default App;

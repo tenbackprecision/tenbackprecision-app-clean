@@ -475,8 +475,17 @@ function App() {
 
 const selectStyle = {
   ...fieldStyle,
-  background: "#ffffff",
-  color: "#111827",
+  background: "#0f172a",
+  color: "#e5f0ff",
+  border: "1px solid rgba(160, 202, 255, 0.25)",
+  appearance: "none",
+  WebkitAppearance: "none",
+  MozAppearance: "none",
+};
+
+const optionStyle = {
+  background: "#0f172a",
+  color: "#e5f0ff",
 };
 
   const buttonStyle = {
@@ -723,21 +732,33 @@ const selectStyle = {
               marginBottom: 14,
             }}
           >
-            <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} style={selectStyle}>
-              <option value="all" style={{ color: "#111827" }}>All Months</option>
-{months.map((month) => (
-  <option key={month} value={month} style={{ color: "#111827" }}>
-    {month}
-  </option>
-))}            </select>
-            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={selectStyle}>
-              <option value="all" style={{ color: "#111827" }}>All Categories</option>
-              {categories.map((category) => (
-  <option key={category} value={category} style={{ color: "#111827" }}>
-    {category}
-  </option>
-))}            </select>
-            <input placeholder="Search notes, categories, amounts" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={fieldStyle} />
+<select
+  value={filterMonth}
+  onChange={(e) => setFilterMonth(e.target.value)}
+  style={selectStyle}
+>
+  <option value="all" style={optionStyle}>All Months</option>
+  {months.map((month) => (
+    <option key={month} value={month} style={optionStyle}>
+      {month}
+    </option>
+  ))}
+</select>
+
+<select
+  value={filterCategory}
+  onChange={(e) => setFilterCategory(e.target.value)}
+  style={selectStyle}
+>
+  <option value="all" style={optionStyle}>All Categories</option>
+  {categories.map((category) => (
+    <option key={category} value={category} style={optionStyle}>
+      {category}
+    </option>
+  ))}
+</select>            
+
+<input placeholder="Search notes, categories, amounts" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={fieldStyle} />
           </div>
         </div>
 
@@ -799,13 +820,17 @@ const selectStyle = {
                 <SectionTitle title={editingExpenseId ? "Edit Expense" : "Add Expense"} subtitle="Receipt-ready expense entry." />
                 <div style={{ display: "grid", gap: 12 }}>
                   <input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
-                  <select value={expenseForm.category} onChange={(e) => setExpenseForm((prev) => ({ ...prev, category: e.target.value }))} style={selectStyle}>                    {categories.map((category) => (
-  <option key={category} value={category} style={{ color: "#111827" }}>
-    {category}
-  </option>
-))}
-                    ))}
-                  </select>
+                  <select
+  value={expenseForm.category}
+  onChange={(e) => setExpenseForm((prev) => ({ ...prev, category: e.target.value }))}
+  style={selectStyle}
+>
+  {categories.map((category) => (
+    <option key={category} value={category} style={optionStyle}>
+      {category}
+    </option>
+  ))}
+</select>
                   <input type="number" step="0.01" placeholder="Amount" value={expenseForm.amount} onChange={(e) => setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))} style={fieldStyle} />
                   <input placeholder="Note" value={expenseForm.note} onChange={(e) => setExpenseForm((prev) => ({ ...prev, note: e.target.value }))} style={fieldStyle} />
                   <label style={{ ...fieldStyle, display: "grid", placeItems: "center", cursor: "pointer" }}>
@@ -827,12 +852,17 @@ const selectStyle = {
                 <SectionTitle title={editingIncomeId ? "Edit Income" : "Add Income"} subtitle="Track winnings, payouts, and side money." />
                 <div style={{ display: "grid", gap: 12 }}>
                   <input type="date" value={incomeForm.date} onChange={(e) => setIncomeForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
-                  <select value={incomeForm.source} onChange={(e) => setIncomeForm((prev) => ({ ...prev, source: e.target.value }))} style={selectStyle}>
-                    {incomeSources.map((source) => (
-  <option key={source} value={source} style={{ color: "#111827" }}>
-    {source}
-  </option>
-))}                  </select>
+<select
+  value={incomeForm.source}
+  onChange={(e) => setIncomeForm((prev) => ({ ...prev, source: e.target.value }))}
+  style={selectStyle}
+>
+  {incomeSources.map((source) => (
+    <option key={source} value={source} style={optionStyle}>
+      {source}
+    </option>
+  ))}
+</select>
                   <input type="number" step="0.01" placeholder="Amount" value={incomeForm.amount} onChange={(e) => setIncomeForm((prev) => ({ ...prev, amount: e.target.value }))} style={fieldStyle} />
                   <input placeholder="Note" value={incomeForm.note} onChange={(e) => setIncomeForm((prev) => ({ ...prev, note: e.target.value }))} style={fieldStyle} />
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

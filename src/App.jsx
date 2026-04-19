@@ -17,6 +17,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  query
 } from "firebase/firestore";
 import {
   ResponsiveContainer,

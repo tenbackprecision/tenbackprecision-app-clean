@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
+  createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
 import {
@@ -14,12 +14,26 @@ import {
   doc,
   getDocs,
   getFirestore,
+  orderBy,
   query,
+  serverTimestamp,
   updateDoc,
   where,
 } from "firebase/firestore";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
-/* ---------- FIREBASE ---------- */
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -33,447 +47,362 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ---------- STYLES ---------- */
-const appStyles = {
-  background:
-    "radial-gradient(circle at top, rgba(34,99,255,0.25), rgba(7,18,48,1) 45%, rgba(4,12,32,1) 100%)",
-  panel: "rgba(34, 103, 255, 0.20)",
-  border: "rgba(255,255,255,0.12)",
-  text: "#ffffff",
-  muted: "rgba(255,255,255,0.72)",
-  accent: "#ff6b4a",
-  accent2: "#52c7ff",
-  success: "#4ade80",
-  danger: "#f87171",
-  warning: "#fbbf24",
-  shadow: "0 14px 32px rgba(0,0,0,0.28)",
-};
+const APP_VERSION = "v1001";
+const MAX_RECEIPT_SIZE_MB = 5;
+const CHART_COLORS = ["#7dd3fc", "#38bdf8", "#60a5fa", "#818cf8", "#a78bfa", "#f472b6", "#f59e0b"];
 
-const fieldStyle = {
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: "12px",
-  border: `1px solid ${appStyles.border}`,
-  background: "rgba(255,255,255,0.08)",
-  color: "#fff",
-  outline: "none",
-  boxSizing: "border-box",
-};
+const categories = [
+  "Tournament",
+  "Equipment",
+  "Travel",
+  "Food",
+  "Practice",
+  "Supplies",
+  "Marketing",
+  "Other",
+];
 
-const lightSelectStyle = {
-  ...fieldStyle,
-  color: "#111827",
-  background: "rgba(255,255,255,0.95)",
-};
+const incomeSources = [
+  "Tournament Winnings",
+  "League Payout",
+  "Side Sales",
+  "Sponsorship",
+  "Refund",
+  "Other",
+];
 
-/* ---------- HELPERS ---------- */
-const formatMonth = (monthKey) => {
-  if (!monthKey || monthKey === "No Date") return "No Date";
-  const [year, month] = monthKey.split("-");
-  const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
+const todayString = () => new Date().toISOString().slice(0, 10);
+const monthKey = (date) => (date ? String(date).slice(0, 7) : "No Date");
+const currency = (value) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(Number(value || 0));
+
+async function compressImage(file, maxWidth = 1600, quality = 0.8) {
+  if (!file || !file.type?.startsWith("image/")) return null;
+
+  const imageBitmap = await createImageBitmap(file);
+  const ratio = Math.min(1, maxWidth / imageBitmap.width);
+  const width = Math.round(imageBitmap.width * ratio);
+  const height = Math.round(imageBitmap.height * ratio);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(imageBitmap, 0, 0, width, height);
+
+  return new Promise((resolve) => {
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) {
+          resolve(null);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(blob);
+      },
+      "image/jpeg",
+      quality
+    );
   });
-};
+}
 
-/* ---------- UI ---------- */
-const Button = ({
-  children,
-  onClick,
-  style,
-  type = "button",
-  disabled = false,
-}) => (
-  <button
-    type={type}
-    onClick={onClick}
-    disabled={disabled}
-    style={{
-      padding: "12px 16px",
-      borderRadius: "12px",
-      border: "none",
-      background: disabled ? "#7c7c7c" : appStyles.accent,
-      color: "#fff",
-      cursor: disabled ? "not-allowed" : "pointer",
-      fontWeight: 700,
-      letterSpacing: "0.3px",
-      boxShadow: appStyles.shadow,
-      ...style,
-    }}
-  >
-    {children}
-  </button>
-);
+function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [activeView, setActiveView] = useState("dashboard");
+  const [filterMonth, setFilterMonth] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [editingIncomeId, setEditingIncomeId] = useState(null);
 
-const Card = ({ children, style }) => (
-  <div
-    style={{
-      background: appStyles.panel,
-      padding: "20px",
-      borderRadius: "18px",
-      marginBottom: "18px",
-      border: `1px solid ${appStyles.border}`,
-      boxShadow: appStyles.shadow,
-      backdropFilter: "blur(10px)",
-      ...style,
-    }}
-  >
-    {children}
-  </div>
-);
+  const [authForm, setAuthForm] = useState({
+    email: "",
+    password: "",
+  });
 
-/* ---------- APP ---------- */
-export default function App() {
-  const isLocalDev =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
-
-  const [view, setView] = useState("simple");
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState([]);
-  const [filterCategory, setFilterCategory] = useState("All");
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
-
-  const [user, setUser] = useState(null);
-  const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({ email: "", password: "" });
-  const [authError, setAuthError] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(false);
 
   const [expenseForm, setExpenseForm] = useState({
-    date: "",
-    category: "",
+    date: todayString(),
+    category: "Tournament",
     amount: "",
+    note: "",
     receipt: "",
   });
 
   const [incomeForm, setIncomeForm] = useState({
-    date: "",
-    source: "",
+    date: todayString(),
+    source: "Tournament Winnings",
     amount: "",
+    note: "",
   });
 
-  const [editingExpense, setEditingExpense] = useState(null);
-  const [editingIncome, setEditingIncome] = useState(null);
-
-  const mobileStack =
-    typeof window !== "undefined" && window.innerWidth < 700;
+  const mobileStack = window.innerWidth < 900;
 
   useEffect(() => {
-    if (isLocalDev) return;
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser || null);
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser || null);
+      setAuthLoading(false);
     });
-    return () => unsubscribe();
-  }, [isLocalDev]);
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
-    if (isLocalDev) {
-      setDataLoading(false);
-      return;
-    }
-
     if (!user) {
       setExpenses([]);
       setIncome([]);
       return;
     }
+    void loadData();
+  }, [user]);
 
-    const loadData = async () => {
-      setDataLoading(true);
-      try {
-        const expenseQuery = query(
-          collection(db, "expenses"),
-          where("uid", "==", user.uid)
-        );
-        const incomeQuery = query(
-          collection(db, "income"),
-          where("uid", "==", user.uid)
-        );
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2800);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
-        const [expenseSnap, incomeSnap] = await Promise.all([
-          getDocs(expenseQuery),
-          getDocs(incomeQuery),
-        ]);
+  const showToast = (message, type = "success") => setToast({ message, type });
 
-        const loadedExpenses = expenseSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-
-        const loadedIncome = incomeSnap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
-
-        loadedExpenses.sort((a, b) =>
-          (b.date || "").localeCompare(a.date || "")
-        );
-        loadedIncome.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-
-        setExpenses(loadedExpenses);
-        setIncome(loadedIncome);
-      } catch (error) {
-        console.error("Load error:", error);
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    loadData();
-  }, [user, isLocalDev]);
-
-  const handleAuth = async () => {
-    setAuthLoading(true);
-    setAuthError("");
-
+  async function loadData() {
+    if (!user?.uid) return;
+    setDataLoading(true);
     try {
-      if (authMode === "login") {
-        await signInWithEmailAndPassword(
-          auth,
-          authForm.email,
-          authForm.password
-        );
-      } else {
-        await createUserWithEmailAndPassword(
-          auth,
-          authForm.email,
-          authForm.password
-        );
-      }
+      const expensesQuery = query(collection(db, "expenses"), where("uid", "==", user.uid));
+      const incomeQuery = query(collection(db, "income"), where("uid", "==", user.uid));
 
+      const [expenseSnap, incomeSnap] = await Promise.all([getDocs(expensesQuery), getDocs(incomeQuery)]);
+
+      const loadedExpenses = expenseSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+      const loadedIncome = incomeSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+      setExpenses(loadedExpenses);
+      setIncome(loadedIncome);
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "Could not load data", "error");
+    } finally {
+      setDataLoading(false);
+    }
+  }
+
+  async function handleAuth(mode) {
+    try {
+      if (mode === "login") {
+        await signInWithEmailAndPassword(auth, authForm.email, authForm.password);
+        showToast("Welcome back.");
+      } else {
+        await createUserWithEmailAndPassword(auth, authForm.email, authForm.password);
+        showToast("Account created.");
+      }
       setAuthForm({ email: "", password: "" });
     } catch (error) {
-      setAuthError(error.message || "Authentication failed.");
-    } finally {
-      setAuthLoading(false);
+      console.error(error);
+      showToast(error.message || "Authentication failed", "error");
     }
-  };
+  }
 
-  const addExpense = async () => {
-    if (!expenseForm.amount) return;
-
-    const localUid = user?.uid || "local-dev-user";
+  async function handleReceiptFile(file) {
+    if (!file) return;
+    const maxBytes = MAX_RECEIPT_SIZE_MB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      showToast(`Receipt is too large. Keep it under ${MAX_RECEIPT_SIZE_MB} MB.`, "error");
+      return;
+    }
 
     try {
-      const payload = {
-        ...expenseForm,
-        uid: localUid,
-        amount: Number(expenseForm.amount),
-        createdAt: new Date().toISOString(),
-      };
-
-      if (editingExpense) {
-        if (!isLocalDev && editingExpense.id) {
-          await updateDoc(doc(db, "expenses", editingExpense.id), payload);
-        }
-
-        setExpenses((prev) =>
-          prev.map((e) =>
-            e.id === editingExpense.id ? { ...e, ...payload } : e
-          )
-        );
-        setEditingExpense(null);
-      } else {
-        if (!isLocalDev) {
-          const ref = await addDoc(collection(db, "expenses"), payload);
-          setExpenses((prev) => [{ id: ref.id, ...payload }, ...prev]);
-        } else {
-          setExpenses((prev) => [
-            { id: `local-expense-${Date.now()}`, ...payload },
-            ...prev,
-          ]);
-        }
-      }
-
-      setExpenseForm({
-        date: "",
-        category: "",
-        amount: "",
-        receipt: "",
-      });
+      const compressed = await compressImage(file);
+      setExpenseForm((prev) => ({ ...prev, receipt: compressed || "" }));
+      showToast("Receipt added.");
     } catch (error) {
-      console.error("Expense error:", error);
-      alert(error.message);
+      console.error(error);
+      showToast("Could not process receipt.", "error");
     }
-  };
+  }
 
-  const addIncome = async () => {
-    if (!incomeForm.amount) return;
-
-    const localUid = user?.uid || "local-dev-user";
-
-    try {
-      const payload = {
-        ...incomeForm,
-        uid: localUid,
-        amount: Number(incomeForm.amount),
-        createdAt: new Date().toISOString(),
-      };
-
-      if (editingIncome) {
-        if (!isLocalDev && editingIncome.id) {
-          await updateDoc(doc(db, "income", editingIncome.id), payload);
-        }
-
-        setIncome((prev) =>
-          prev.map((i) =>
-            i.id === editingIncome.id ? { ...i, ...payload } : i
-          )
-        );
-        setEditingIncome(null);
-      } else {
-        if (!isLocalDev) {
-          const ref = await addDoc(collection(db, "income"), payload);
-          setIncome((prev) => [{ id: ref.id, ...payload }, ...prev]);
-        } else {
-          setIncome((prev) => [
-            { id: `local-income-${Date.now()}`, ...payload },
-            ...prev,
-          ]);
-        }
-      }
-
-      setIncomeForm({
-        date: "",
-        source: "",
-        amount: "",
-      });
-    } catch (error) {
-      console.error("Income error:", error);
-      alert(error.message);
-    }
-  };
-
-  const deleteExpense = async (id) => {
-    if (!window.confirm("Delete this expense?")) return;
-
-    try {
-      if (!isLocalDev && id && !String(id).startsWith("local-")) {
-        await deleteDoc(doc(db, "expenses", id));
-      }
-      setExpenses((prev) => prev.filter((e) => e.id !== id));
-    } catch (error) {
-      console.error("Delete expense error:", error);
-      alert(error.message);
-    }
-  };
-
-  const deleteIncome = async (id) => {
-    if (!window.confirm("Delete this income?")) return;
-
-    try {
-      if (!isLocalDev && id && !String(id).startsWith("local-")) {
-        await deleteDoc(doc(db, "income", id));
-      }
-      setIncome((prev) => prev.filter((i) => i.id !== id));
-    } catch (error) {
-      console.error("Delete income error:", error);
-      alert(error.message);
-    }
-  };
-
-  const startEditExpense = (expense) => {
-    setEditingExpense(expense);
+  function resetExpenseForm() {
     setExpenseForm({
-      date: expense.date || "",
-      category: expense.category || "",
-      amount: expense.amount ? String(expense.amount) : "",
-      receipt: expense.receipt || "",
+      date: todayString(),
+      category: "Tournament",
+      amount: "",
+      note: "",
+      receipt: "",
     });
-    setView("simple");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+    setEditingExpenseId(null);
+  }
 
-  const startEditIncome = (entry) => {
-    setEditingIncome(entry);
+  function resetIncomeForm() {
     setIncomeForm({
-      date: entry.date || "",
-      source: entry.source || "",
-      amount: entry.amount ? String(entry.amount) : "",
+      date: todayString(),
+      source: "Tournament Winnings",
+      amount: "",
+      note: "",
     });
-    setView("simple");
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+    setEditingIncomeId(null);
+  }
 
-  const exportCSV = () => {
-    const rows = [
-      ["Type", "Date", "Category/Source", "Amount"],
-      ...expenses.map((e) => [
-        "Expense",
-        e.date || "",
-        e.category || "",
-        Number(e.amount || 0).toFixed(2),
-      ]),
-      ...income.map((i) => [
-        "Income",
-        i.date || "",
-        i.source || "",
-        Number(i.amount || 0).toFixed(2),
-      ]),
-    ];
+  async function saveExpense() {
+    if (!expenseForm.amount) {
+      showToast("Add an expense amount first.", "error");
+      return;
+    }
 
-    const csv = rows
-      .map((row) =>
-        row
-          .map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`)
-          .join(",")
-      )
-      .join("\n");
+    const payload = {
+      uid: user.uid,
+      date: expenseForm.date,
+      category: expenseForm.category,
+      amount: Number(expenseForm.amount),
+      note: expenseForm.note.trim(),
+      receipt: expenseForm.receipt || "",
+      updatedAt: serverTimestamp(),
+    };
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "ten-back-precision-report.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+    try {
+      if (editingExpenseId) {
+        await updateDoc(doc(db, "expenses", editingExpenseId), payload);
+        setExpenses((prev) =>
+          prev.map((item) => (item.id === editingExpenseId ? { ...item, ...payload } : item))
+        );
+        showToast("Expense updated.");
+      } else {
+        const ref = await addDoc(collection(db, "expenses"), {
+          ...payload,
+          createdAt: serverTimestamp(),
+        });
+        setExpenses((prev) => [{ id: ref.id, ...payload }, ...prev]);
+        showToast("Expense saved.");
+      }
+      resetExpenseForm();
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "Could not save expense", "error");
+    }
+  }
+
+  async function saveIncome() {
+    if (!incomeForm.amount) {
+      showToast("Add an income amount first.", "error");
+      return;
+    }
+
+    const payload = {
+      uid: user.uid,
+      date: incomeForm.date,
+      source: incomeForm.source,
+      amount: Number(incomeForm.amount),
+      note: incomeForm.note.trim(),
+      updatedAt: serverTimestamp(),
+    };
+
+    try {
+      if (editingIncomeId) {
+        await updateDoc(doc(db, "income", editingIncomeId), payload);
+        setIncome((prev) => prev.map((item) => (item.id === editingIncomeId ? { ...item, ...payload } : item)));
+        showToast("Income updated.");
+      } else {
+        const ref = await addDoc(collection(db, "income"), {
+          ...payload,
+          createdAt: serverTimestamp(),
+        });
+        setIncome((prev) => [{ id: ref.id, ...payload }, ...prev]);
+        showToast("Income saved.");
+      }
+      resetIncomeForm();
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "Could not save income", "error");
+    }
+  }
+
+  async function removeExpense(item) {
+    const confirmed = window.confirm(`Delete expense for ${currency(item.amount)}?`);
+    if (!confirmed) return;
+    try {
+      await deleteDoc(doc(db, "expenses", item.id));
+      setExpenses((prev) => prev.filter((x) => x.id !== item.id));
+      showToast("Expense deleted.");
+    } catch (error) {
+      console.error(error);
+      showToast("Could not delete expense.", "error");
+    }
+  }
+
+  async function removeIncome(item) {
+    const confirmed = window.confirm(`Delete income for ${currency(item.amount)}?`);
+    if (!confirmed) return;
+    try {
+      await deleteDoc(doc(db, "income", item.id));
+      setIncome((prev) => prev.filter((x) => x.id !== item.id));
+      showToast("Income deleted.");
+    } catch (error) {
+      console.error(error);
+      showToast("Could not delete income.", "error");
+    }
+  }
+
+  const months = useMemo(() => {
+    const set = new Set([...expenses.map((e) => monthKey(e.date)), ...income.map((i) => monthKey(i.date))]);
+    return Array.from(set).filter(Boolean).sort((a, b) => b.localeCompare(a));
+  }, [expenses, income]);
 
   const filteredExpenses = useMemo(() => {
-    return filterCategory === "All"
-      ? expenses
-      : expenses.filter((e) => e.category === filterCategory);
-  }, [expenses, filterCategory]);
+    return expenses.filter((item) => {
+      const matchesMonth = filterMonth === "all" || monthKey(item.date) === filterMonth;
+      const matchesCategory = filterCategory === "all" || item.category === filterCategory;
+      const text = `${item.category} ${item.note || ""} ${item.amount || ""}`.toLowerCase();
+      const matchesSearch = !searchTerm || text.includes(searchTerm.toLowerCase());
+      return matchesMonth && matchesCategory && matchesSearch;
+    });
+  }, [expenses, filterMonth, filterCategory, searchTerm]);
 
-  const totalExpenses = expenses.reduce(
-    (sum, e) => sum + Number(e.amount || 0),
-    0
-  );
-  const totalIncome = income.reduce(
-    (sum, i) => sum + Number(i.amount || 0),
-    0
-  );
+  const filteredIncome = useMemo(() => {
+    return income.filter((item) => {
+      const matchesMonth = filterMonth === "all" || monthKey(item.date) === filterMonth;
+      const text = `${item.source} ${item.note || ""} ${item.amount || ""}`.toLowerCase();
+      const matchesSearch = !searchTerm || text.includes(searchTerm.toLowerCase());
+      return matchesMonth && matchesSearch;
+    });
+  }, [income, filterMonth, searchTerm]);
+
+  const totalExpenses = filteredExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const totalIncome = filteredIncome.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const profit = totalIncome - totalExpenses;
+  const receipts = filteredExpenses.filter((item) => item.receipt);
 
   const monthlyStats = useMemo(() => {
     const grouped = {};
 
-    expenses.forEach((e) => {
-      const key = e.date ? e.date.slice(0, 7) : "No Date";
-      if (!grouped[key]) grouped[key] = { income: 0, expenses: 0 };
-      grouped[key].expenses += Number(e.amount || 0);
+    expenses.forEach((item) => {
+      const key = monthKey(item.date);
+      if (!grouped[key]) grouped[key] = { month: key, income: 0, expenses: 0, profit: 0 };
+      grouped[key].expenses += Number(item.amount || 0);
     });
 
-    income.forEach((i) => {
-      const key = i.date ? i.date.slice(0, 7) : "No Date";
-      if (!grouped[key]) grouped[key] = { income: 0, expenses: 0 };
-      grouped[key].income += Number(i.amount || 0);
+    income.forEach((item) => {
+      const key = monthKey(item.date);
+      if (!grouped[key]) grouped[key] = { month: key, income: 0, expenses: 0, profit: 0 };
+      grouped[key].income += Number(item.amount || 0);
     });
 
-    return Object.entries(grouped)
-      .map(([month, values]) => ({
-        month,
-        income: values.income,
-        expenses: values.expenses,
-        profit: values.income - values.expenses,
-      }))
-      .sort((a, b) => b.month.localeCompare(a.month));
+    return Object.values(grouped)
+      .map((item) => ({ ...item, profit: item.income - item.expenses }))
+      .sort((a, b) => a.month.localeCompare(b.month));
   }, [expenses, income]);
-
-  const receipts = expenses.filter((e) => e.receipt);
 
   const chartData = useMemo(() => {
     const grouped = filteredExpenses.reduce((acc, item) => {
@@ -482,79 +411,239 @@ export default function App() {
       return acc;
     }, {});
 
-    return Object.entries(grouped).map(([category, amount]) => ({
-      category,
-      amount,
+    return Object.entries(grouped).map(([name, value], index) => ({
+      name,
+      value,
+      fill: CHART_COLORS[index % CHART_COLORS.length],
     }));
   }, [filteredExpenses]);
 
-  const maxChartValue = Math.max(...chartData.map((c) => c.amount), 1);
+  const recentActivity = useMemo(() => {
+    const expenseRows = filteredExpenses.map((item) => ({
+      id: item.id,
+      type: "Expense",
+      title: item.category,
+      date: item.date,
+      amount: -Math.abs(Number(item.amount || 0)),
+      note: item.note || "",
+    }));
 
-  if (!user && !isLocalDev) {
+    const incomeRows = filteredIncome.map((item) => ({
+      id: item.id,
+      type: "Income",
+      title: item.source,
+      date: item.date,
+      amount: Math.abs(Number(item.amount || 0)),
+      note: item.note || "",
+    }));
+
+    return [...expenseRows, ...incomeRows]
+      .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")))
+      .slice(0, 8);
+  }, [filteredExpenses, filteredIncome]);
+
+  const cardStyle = {
+    background: "rgba(28, 56, 140, 0.55)",
+    border: "1px solid rgba(125, 211, 252, 0.15)",
+    borderRadius: "18px",
+    padding: "18px",
+    boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+    backdropFilter: "blur(8px)",
+  };
+
+  const appStyles = {
+    background: "radial-gradient(circle at center top, rgba(52, 120, 255, 0.25), rgba(7, 16, 45, 0.95) 52%, rgba(2, 8, 23, 1) 100%)",
+    card: cardStyle,
+    text: "#e5f0ff",
+    muted: "#b8caef",
+    accent: "#ff8e72",
+    accent2: "#67e8f9",
+    good: "#57f287",
+    bad: "#ff6b6b",
+  };
+
+  const fieldStyle = {
+    width: "100%",
+    padding: "14px 16px",
+    borderRadius: "14px",
+    background: "rgba(83, 128, 255, 0.20)",
+    color: "#eef5ff",
+    border: "1px solid rgba(160, 202, 255, 0.25)",
+    outline: "none",
+    fontSize: "16px",
+    boxSizing: "border-box",
+  };
+
+  const buttonStyle = {
+    border: "none",
+    borderRadius: "14px",
+    padding: "14px 18px",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: 700,
+    color: "#fff",
+  };
+
+  function StatCard({ label, value, subValue, valueColor }) {
+    return (
+      <div style={appStyles.card}>
+        <div style={{ color: appStyles.muted, fontSize: 13, marginBottom: 8 }}>{label}</div>
+        <div style={{ color: valueColor || appStyles.text, fontSize: 28, fontWeight: 800 }}>{value}</div>
+        {subValue ? <div style={{ color: appStyles.muted, marginTop: 6, fontSize: 13 }}>{subValue}</div> : null}
+      </div>
+    );
+  }
+
+  function SectionTitle({ title, subtitle, right }) {
     return (
       <div
         style={{
-          background: appStyles.background,
-          minHeight: "100vh",
-          padding: "20px",
-          color: appStyles.text,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: mobileStack ? "flex-start" : "center",
+          flexDirection: mobileStack ? "column" : "row",
+          marginBottom: 14,
         }}
       >
-        <Card style={{ width: "100%", maxWidth: "420px" }}>
-          <h1 style={{ color: appStyles.accent, marginTop: 0 }}>
-            🎳 TEN BACK PRECISION
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 800 }}>{title}</div>
+          {subtitle ? <div style={{ color: appStyles.muted, marginTop: 4 }}>{subtitle}</div> : null}
+        </div>
+        {right || null}
+      </div>
+    );
+  }
+
+  function ReceiptCard({ item }) {
+    return (
+      <div style={{ ...appStyles.card, padding: 12 }}>
+        <button
+          type="button"
+          onClick={() => setSelectedReceipt(item.receipt)}
+          style={{
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            width: "100%",
+            cursor: "pointer",
+          }}
+        >
+          <img
+            src={item.receipt}
+            alt="Receipt"
+            style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: 14 }}
+          />
+        </button>
+        <div style={{ marginTop: 10, fontWeight: 700 }}>{item.category}</div>
+        <div style={{ color: appStyles.muted, fontSize: 14 }}>{item.date || "No date"}</div>
+        <div style={{ color: appStyles.text, marginTop: 6 }}>{currency(item.amount)}</div>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={() => setSelectedReceipt(item.receipt)}
+            style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a", flex: 1 }}
+          >
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => removeExpense(item)}
+            style={{ ...buttonStyle, background: appStyles.bad, flex: 1 }}
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          background: appStyles.background,
+          color: appStyles.text,
+          fontSize: 20,
+          fontWeight: 700,
+        }}
+      >
+        Loading Ten Back Precision…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: appStyles.background,
+          display: "grid",
+          placeItems: "center",
+          padding: 20,
+          color: appStyles.text,
+        }}
+      >
+        <div style={{ ...appStyles.card, width: "100%", maxWidth: 640 }}>
+          <h1
+            style={{
+              color: appStyles.accent,
+              marginBottom: 6,
+              marginTop: 0,
+              fontSize: mobileStack ? 28 : 34,
+            }}
+          >
+            🎳 TEN BACK PRECISION v 1.0
           </h1>
-          <p style={{ color: appStyles.muted, marginBottom: "18px" }}>
-            Sign in to keep your bowling LLC data synced across devices.
+          <p style={{ color: appStyles.muted, marginTop: 0, marginBottom: 18, maxWidth: 700 }}>
+            Bowling LLC tracker for expenses, income, receipts, and reports. BUILD {APP_VERSION}
           </p>
 
-          <input
-            type="email"
-            placeholder="Email"
-            value={authForm.email}
-            onChange={(e) =>
-              setAuthForm({ ...authForm, email: e.target.value })
-            }
-            style={fieldStyle}
-          />
-          <div style={{ height: "10px" }} />
-          <input
-            type="password"
-            placeholder="Password"
-            value={authForm.password}
-            onChange={(e) =>
-              setAuthForm({ ...authForm, password: e.target.value })
-            }
-            style={fieldStyle}
-          />
-
-          {authError && (
-            <p style={{ color: "#ffd2c2", fontSize: "14px" }}>{authError}</p>
-          )}
-
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <Button onClick={handleAuth} disabled={authLoading}>
-              {authLoading
-                ? "Working..."
-                : authMode === "login"
-                ? "Log In"
-                : "Create Account"}
-            </Button>
-
-            <Button
-              onClick={() => {
-                setAuthMode(authMode === "login" ? "signup" : "login");
-                setAuthError("");
-              }}
-              style={{ background: appStyles.accent2 }}
-            >
-              {authMode === "login" ? "Need an account?" : "Have an account?"}
-            </Button>
+          <div style={{ display: "grid", gap: 12 }}>
+            <input
+              placeholder="Email"
+              value={authForm.email}
+              onChange={(e) => setAuthForm((prev) => ({ ...prev, email: e.target.value }))}
+              style={fieldStyle}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={authForm.password}
+              onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
+              style={fieldStyle}
+            />
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" onClick={() => handleAuth("login")} style={{ ...buttonStyle, background: appStyles.accent }}>
+                Log In
+              </button>
+              <button type="button" onClick={() => handleAuth("signup")} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}>
+                Need an account?
+              </button>
+            </div>
           </div>
-        </Card>
+        </div>
+        {toast ? (
+          <div
+            style={{
+              position: "fixed",
+              bottom: 22,
+              right: 22,
+              background: toast.type === "error" ? "rgba(255,107,107,0.95)" : "rgba(34,197,94,0.95)",
+              color: "#fff",
+              padding: "12px 16px",
+              borderRadius: 12,
+              fontWeight: 700,
+              zIndex: 9999,
+            }}
+          >
+            {toast.message}
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -564,742 +653,408 @@ export default function App() {
       style={{
         background: appStyles.background,
         minHeight: "100vh",
-        padding: mobileStack ? "16px" : "20px",
+        padding: mobileStack ? 14 : 20,
         color: "#fff",
-        maxWidth: "1100px",
-        margin: "0 auto",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: mobileStack ? "flex-start" : "center",
-          gap: "14px",
-          flexDirection: mobileStack ? "column" : "row",
-          marginBottom: "8px",
-        }}
-      >
-        <div>
-<h1
-  style={{
-    color: appStyles.accent,
-    marginBottom: "6px",
-    marginTop: 0,
-    fontSize: mobileStack ? "28px" : "34px",
-  }}
->
-
-  🎳 TEN BACK PRECISION v1000 🔥
-</h1>          <p
-            style={{
-              color: appStyles.muted,
-              marginTop: 0,
-              marginBottom: "18px",
-              maxWidth: "700px",
-            }}
-          >
-            Bowling LLC tracker for expenses, income, receipts, and reports. BUILD v1000 🔥
-          </p>
+      <div style={{ maxWidth: 1300, margin: "0 auto" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: mobileStack ? "flex-start" : "center",
+            flexDirection: mobileStack ? "column" : "row",
+            gap: 14,
+            marginBottom: 18,
+          }}
+        >
+          <div>
+            <h1 style={{ color: appStyles.accent, marginBottom: 6, marginTop: 0, fontSize: mobileStack ? 28 : 34 }}>
+              🎳 TEN BACK PRECISION {APP_VERSION}
+            </h1>
+            <p style={{ color: appStyles.muted, marginTop: 0, marginBottom: 0, maxWidth: 700 }}>
+              Bowling LLC tracker for expenses, income, receipts, and reports. BUILD {APP_VERSION}
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: activeView === "dashboard" ? appStyles.accent : "rgba(255,255,255,0.12)" }}>Dashboard</button>
+            <button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: activeView === "receipts" ? appStyles.accent : "rgba(255,255,255,0.12)" }}>Receipts</button>
+            <button type="button" onClick={() => signOut(auth)} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>Log Out</button>
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          {!isLocalDev && (
-            <Button
-              onClick={() => signOut(auth)}
-              style={{ background: appStyles.accent2 }}
-            >
-              Log Out
-            </Button>
-          )}
-          <Button
-            onClick={() => setView("simple")}
-            style={{
-              background:
-                view === "simple" ? appStyles.accent : "rgba(255,255,255,0.08)",
-            }}
-          >
-            Simple
-          </Button>
-          <Button
-            onClick={() => setView("dashboard")}
-            style={{
-              background:
-                view === "dashboard"
-                  ? appStyles.accent
-                  : "rgba(255,255,255,0.08)",
-            }}
-          >
-            Dashboard
-          </Button>
-          <Button onClick={exportCSV}>Export CSV</Button>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: mobileStack ? "1fr" : "repeat(4, minmax(0, 1fr))",
+            gap: 14,
+            marginBottom: 18,
+          }}
+        >
+          <StatCard label="Income" value={currency(totalIncome)} subValue={`${filteredIncome.length} income items`} />
+          <StatCard label="Expenses" value={currency(totalExpenses)} subValue={`${filteredExpenses.length} expense items`} />
+          <StatCard label="Net Profit" value={currency(profit)} subValue={profit >= 0 ? "Looking sharp." : "Lane fees are swinging heavy."} valueColor={profit >= 0 ? appStyles.good : appStyles.bad} />
+          <StatCard label="Receipts Uploaded" value={String(receipts.length)} subValue="Tracked and ready" />
         </div>
-      </div>
 
-      {view === "simple" && (
-        <>
-          <Card>
-            <h2 style={{ marginTop: 0 }}>
-              {editingExpense ? "Edit Expense" : "Quick Expense"}
-            </h2>
+        <div style={{ ...appStyles.card, marginBottom: 18 }}>
+          <SectionTitle
+            title="Quick Actions"
+            subtitle="Add income, expenses, and receipts without hunting through menus."
+            right={
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent }}>Add Expense</button>
+                <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}>Add Income</button>
+                <button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>Upload Receipt</button>
+              </div>
+            }
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: mobileStack ? "1fr" : "repeat(3, minmax(0, 1fr))",
+              gap: 12,
+              marginBottom: 14,
+            }}
+          >
+            <select value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} style={fieldStyle}>
+              <option value="all">All Months</option>
+              {months.map((month) => (
+                <option key={month} value={month}>{month}</option>
+              ))}
+            </select>
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} style={fieldStyle}>
+              <option value="all">All Categories</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+            <input placeholder="Search notes, categories, amounts" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={fieldStyle} />
+          </div>
+        </div>
+
+        {activeView === "dashboard" ? (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: mobileStack ? "1fr" : "1.3fr 0.9fr",
+                gap: 18,
+                marginBottom: 18,
+              }}
+            >
+              <div style={appStyles.card}>
+                <SectionTitle title="Monthly Trend" subtitle="Income, expenses, and profit across the calendar." />
+                <div style={{ width: "100%", height: 320 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={monthlyStats}>
+                      <CartesianGrid stroke="rgba(255,255,255,0.08)" />
+                      <XAxis dataKey="month" stroke="#b8caef" />
+                      <YAxis stroke="#b8caef" />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="income" stroke="#67e8f9" strokeWidth={3} />
+                      <Line type="monotone" dataKey="expenses" stroke="#ff8e72" strokeWidth={3} />
+                      <Line type="monotone" dataKey="profit" stroke="#57f287" strokeWidth={3} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div style={appStyles.card}>
+                <SectionTitle title="Expense Breakdown" subtitle="Where your bowling dollars are sprinting off to." />
+                <div style={{ width: "100%", height: 320 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={100} innerRadius={55} paddingAngle={2}>
+                        {chartData.map((entry, index) => (
+                          <Cell key={`${entry.name}-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => currency(value)} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
 
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: mobileStack
-                  ? "1fr"
-                  : "1.1fr 1.1fr 1fr auto",
-                gap: "10px",
-                alignItems: "start",
+                gridTemplateColumns: mobileStack ? "1fr" : "1.05fr 0.95fr",
+                gap: 18,
+                marginBottom: 18,
               }}
             >
-              <input
-                type="date"
-                value={expenseForm.date}
-                onChange={(e) =>
-                  setExpenseForm({ ...expenseForm, date: e.target.value })
-                }
-                style={fieldStyle}
-              />
-
-              <select
-                value={expenseForm.category}
-                onChange={(e) =>
-                  setExpenseForm({ ...expenseForm, category: e.target.value })
-                }
-                style={lightSelectStyle}
-              >
-                <option value="">Category</option>
-                <option value="Tournament">Tournament</option>
-                <option value="Equipment">Equipment</option>
-                <option value="Travel">Travel</option>
-                <option value="Food">Food</option>
-                <option value="Practice">Practice</option>
-                <option value="Other">Other</option>
-              </select>
-
-              <input
-                placeholder="Amount"
-                value={expenseForm.amount}
-                onChange={(e) =>
-                  setExpenseForm({ ...expenseForm, amount: e.target.value })
-                }
-                style={fieldStyle}
-              />
-
-              <label
-                style={{
-                  ...fieldStyle,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  marginBottom: 0,
-                }}
-              >
-                {expenseForm.receipt ? "Receipt Added" : "Upload Receipt"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                      setExpenseForm((prev) => ({
-                        ...prev,
-                        receipt: reader.result,
-                      }));
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                />
-              </label>
-            </div>
-
-            {expenseForm.receipt && (
-              <div
-                style={{
-                  marginTop: "12px",
-                  padding: "12px",
-                  borderRadius: "14px",
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                }}
-              >
-                <p
-                  style={{
-                    fontSize: "12px",
-                    opacity: 0.7,
-                    marginBottom: "8px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                  }}
-                >
-                  📸 Receipt Preview
-                </p>
-
-                <img
-                  src={expenseForm.receipt}
-                  alt="receipt preview"
-                  style={{
-                    width: "100%",
-                    maxWidth: "240px",
-                    borderRadius: "10px",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                  }}
-                />
+              <div style={appStyles.card}>
+                <SectionTitle title={editingExpenseId ? "Edit Expense" : "Add Expense"} subtitle="Receipt-ready expense entry." />
+                <div style={{ display: "grid", gap: 12 }}>
+                  <input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
+                  <select value={expenseForm.category} onChange={(e) => setExpenseForm((prev) => ({ ...prev, category: e.target.value }))} style={fieldStyle}>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                  <input type="number" step="0.01" placeholder="Amount" value={expenseForm.amount} onChange={(e) => setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))} style={fieldStyle} />
+                  <input placeholder="Note" value={expenseForm.note} onChange={(e) => setExpenseForm((prev) => ({ ...prev, note: e.target.value }))} style={fieldStyle} />
+                  <label style={{ ...fieldStyle, display: "grid", placeItems: "center", cursor: "pointer" }}>
+                    {expenseForm.receipt ? "Receipt added ✓" : "Upload receipt"}
+                    <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} onChange={(e) => void handleReceiptFile(e.target.files?.[0])} />
+                  </label>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button type="button" onClick={saveExpense} style={{ ...buttonStyle, background: appStyles.accent }}>
+                      {editingExpenseId ? "Update Expense" : "Save Expense"}
+                    </button>
+                    <button type="button" onClick={resetExpenseForm} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>
+                      Reset
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
 
-            <div
-              style={{
-                marginTop: "12px",
-                display: "flex",
-                gap: "10px",
-                flexWrap: "wrap",
-              }}
-            >
-              <Button
-                onClick={addExpense}
-                style={{
-                  width: mobileStack ? "100%" : "auto",
-                  minHeight: "48px",
-                }}
-              >
-                {editingExpense ? "Update Expense" : "Add Expense"}
-              </Button>
-
-              {editingExpense && (
-                <Button
-                  onClick={() => {
-                    setEditingExpense(null);
-                    setExpenseForm({
-                      date: "",
-                      category: "",
-                      amount: "",
-                      receipt: "",
-                    });
-                  }}
-                  style={{
-                    background: "rgba(255,255,255,0.08)",
-                  }}
-                >
-                  Cancel
-                </Button>
-              )}
+              <div style={appStyles.card}>
+                <SectionTitle title={editingIncomeId ? "Edit Income" : "Add Income"} subtitle="Track winnings, payouts, and side money." />
+                <div style={{ display: "grid", gap: 12 }}>
+                  <input type="date" value={incomeForm.date} onChange={(e) => setIncomeForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
+                  <select value={incomeForm.source} onChange={(e) => setIncomeForm((prev) => ({ ...prev, source: e.target.value }))} style={fieldStyle}>
+                    {incomeSources.map((source) => (
+                      <option key={source} value={source}>{source}</option>
+                    ))}
+                  </select>
+                  <input type="number" step="0.01" placeholder="Amount" value={incomeForm.amount} onChange={(e) => setIncomeForm((prev) => ({ ...prev, amount: e.target.value }))} style={fieldStyle} />
+                  <input placeholder="Note" value={incomeForm.note} onChange={(e) => setIncomeForm((prev) => ({ ...prev, note: e.target.value }))} style={fieldStyle} />
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button type="button" onClick={saveIncome} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}>
+                      {editingIncomeId ? "Update Income" : "Save Income"}
+                    </button>
+                    <button type="button" onClick={resetIncomeForm} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </Card>
-
-          <Card>
-            <h2 style={{ marginTop: 0 }}>
-              {editingIncome ? "Edit Income" : "Add Income"}
-            </h2>
 
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: mobileStack ? "1fr" : "1fr 1.3fr 1fr auto",
-                gap: "10px",
-                alignItems: "start",
+                gridTemplateColumns: mobileStack ? "1fr" : "1fr 1fr",
+                gap: 18,
               }}
             >
-              <input
-                type="date"
-                value={incomeForm.date}
-                onChange={(e) =>
-                  setIncomeForm({ ...incomeForm, date: e.target.value })
-                }
-                style={fieldStyle}
-              />
-
-              <input
-                placeholder="Source"
-                value={incomeForm.source}
-                onChange={(e) =>
-                  setIncomeForm({ ...incomeForm, source: e.target.value })
-                }
-                style={fieldStyle}
-              />
-
-              <input
-                placeholder="Amount"
-                value={incomeForm.amount}
-                onChange={(e) =>
-                  setIncomeForm({ ...incomeForm, amount: e.target.value })
-                }
-                style={fieldStyle}
-              />
-
-              <Button
-                onClick={addIncome}
-                style={{
-                  width: mobileStack ? "100%" : "auto",
-                  minHeight: "48px",
-                }}
-              >
-                {editingIncome ? "Update Income" : "Add Income"}
-              </Button>
-            </div>
-
-            {editingIncome && (
-              <div style={{ marginTop: "12px" }}>
-                <Button
-                  onClick={() => {
-                    setEditingIncome(null);
-                    setIncomeForm({
-                      date: "",
-                      source: "",
-                      amount: "",
-                    });
-                  }}
-                  style={{
-                    background: "rgba(255,255,255,0.08)",
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-          </Card>
-        </>
-      )}
-
-      {view === "dashboard" && (
-        <>
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Overview</h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: mobileStack ? "1fr" : "repeat(3, 1fr)",
-                gap: "12px",
-              }}
-            >
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  padding: "14px",
-                  borderRadius: "14px",
-                }}
-              >
-                <p style={{ color: appStyles.muted, marginBottom: "6px" }}>
-                  Income
-                </p>
-                <h3 style={{ margin: 0 }}>${totalIncome.toFixed(2)}</h3>
-              </div>
-
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  padding: "14px",
-                  borderRadius: "14px",
-                }}
-              >
-                <p style={{ color: appStyles.muted, marginBottom: "6px" }}>
-                  Expenses
-                </p>
-                <h3 style={{ margin: 0 }}>${totalExpenses.toFixed(2)}</h3>
-              </div>
-
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  padding: "14px",
-                  borderRadius: "14px",
-                }}
-              >
-                <p style={{ color: appStyles.muted, marginBottom: "6px" }}>
-                  Profit
-                </p>
-                <h3
-                  style={{
-                    margin: 0,
-                    color: profit >= 0 ? appStyles.success : appStyles.danger,
-                  }}
-                >
-                  ${profit.toFixed(2)}
-                </h3>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Monthly Breakdown</h2>
-
-            {monthlyStats.length === 0 ? (
-              <p style={{ opacity: 0.6 }}>No data yet.</p>
-            ) : (
-              <div style={{ display: "grid", gap: "10px", marginTop: "10px" }}>
-                {monthlyStats.map((m) => (
-                  <div
-                    key={m.month}
-                    style={{
-                      padding: "12px",
-                      borderRadius: "10px",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      background: "rgba(255,255,255,0.02)",
-                    }}
-                  >
-                    <strong>{formatMonth(m.month)}</strong>
-
-                    <div
-                      style={{
-                        fontSize: "13px",
-                        marginTop: "6px",
-                        opacity: 0.85,
-                      }}
-                    >
-                      Income: ${m.income.toFixed(2)}
-                      <br />
-                      Expenses: ${m.expenses.toFixed(2)}
-                      <br />
-                      Profit:{" "}
-                      <span
+              <div style={appStyles.card}>
+                <SectionTitle title="Recent Activity" subtitle="Latest movement across income and expenses." />
+                {recentActivity.length === 0 ? (
+                  <div style={{ color: appStyles.muted }}>No activity yet. Feed the beast some data.</div>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {recentActivity.map((item) => (
+                      <div
+                        key={`${item.type}-${item.id}`}
                         style={{
-                          color:
-                            m.profit >= 0
-                              ? appStyles.success
-                              : appStyles.danger,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          padding: "12px 14px",
+                          borderRadius: 14,
+                          background: "rgba(255,255,255,0.06)",
                         }}
                       >
-                        ${m.profit.toFixed(2)}
-                      </span>
-                    </div>
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{item.title}</div>
+                          <div style={{ color: appStyles.muted, fontSize: 14 }}>{item.type} • {item.date || "No date"}</div>
+                          {item.note ? <div style={{ color: appStyles.muted, fontSize: 13, marginTop: 4 }}>{item.note}</div> : null}
+                        </div>
+                        <div style={{ fontWeight: 800, color: item.amount >= 0 ? appStyles.good : appStyles.bad }}>
+                          {item.amount >= 0 ? "+" : "-"}{currency(Math.abs(item.amount))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </Card>
 
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Receipt Gallery</h2>
-
+              <div style={appStyles.card}>
+                <SectionTitle title="Receipts Snapshot" subtitle="Newest receipt-backed expenses." right={<button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>Open Gallery</button>} />
+                {receipts.length === 0 ? (
+                  <div style={{ color: appStyles.muted }}>No receipts yet. Upload one and this section wakes right up.</div>
+                ) : (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    {receipts.slice(0, 4).map((item) => (
+                      <div key={item.id} style={{ display: "grid", gridTemplateColumns: "88px 1fr auto", gap: 12, alignItems: "center", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 10 }}>
+                        <img src={item.receipt} alt="Receipt thumbnail" style={{ width: 88, height: 88, objectFit: "cover", borderRadius: 12 }} />
+                        <div>
+                          <div style={{ fontWeight: 700 }}>{item.category}</div>
+                          <div style={{ color: appStyles.muted, fontSize: 14 }}>{item.date || "No date"}</div>
+                        </div>
+                        <button type="button" onClick={() => setSelectedReceipt(item.receipt)} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a", padding: "10px 14px" }}>View</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div style={appStyles.card}>
+            <SectionTitle title="Receipt Gallery" subtitle="Every receipt-backed expense in one place." />
             {receipts.length === 0 ? (
-              <p style={{ opacity: 0.6 }}>No receipts uploaded yet.</p>
+              <div style={{ color: appStyles.muted }}>No receipts uploaded yet. Add one from the expense form above.</div>
             ) : (
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: mobileStack
-                    ? "repeat(2, 1fr)"
-                    : "repeat(4, 1fr)",
-                  gap: "12px",
+                  gridTemplateColumns: mobileStack ? "1fr" : "repeat(3, minmax(0, 1fr))",
+                  gap: 14,
                 }}
               >
-                {receipts.map((e, idx) => (
-                  <div
-                    key={e.id || idx}
-                    style={{
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: "12px",
-                      padding: "8px",
-                    }}
-                  >
-                    <img
-                      src={e.receipt}
-                      alt="receipt"
-                      style={{
-                        width: "100%",
-                        aspectRatio: "1 / 1",
-                        objectFit: "cover",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => setSelectedReceipt(e.receipt)}
-                    />
-
-                    <div
-                      style={{
-                        marginTop: "8px",
-                        fontSize: "12px",
-                        opacity: 0.8,
-                      }}
-                    >
-                      <div>{e.date || "No date"}</div>
-                      <div>{e.category || "No category"}</div>
-                      <div>${Number(e.amount || 0).toFixed(2)}</div>
-                    </div>
-                  </div>
+                {receipts.map((item) => (
+                  <ReceiptCard key={item.id} item={item} />
                 ))}
               </div>
             )}
-          </Card>
+          </div>
+        )}
 
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Expense Filter</h2>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              style={lightSelectStyle}
-            >
-              <option value="All">All Categories</option>
-              <option value="Tournament">Tournament</option>
-              <option value="Equipment">Equipment</option>
-              <option value="Travel">Travel</option>
-              <option value="Food">Food</option>
-              <option value="Practice">Practice</option>
-              <option value="Other">Other</option>
-            </select>
-          </Card>
-
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Expenses</h2>
-
-            {dataLoading ? (
-              <p>Loading...</p>
-            ) : filteredExpenses.length === 0 ? (
-              <p style={{ opacity: 0.7 }}>No expenses yet.</p>
-            ) : (
-              <div style={{ display: "grid", gap: "12px" }}>
-                {filteredExpenses.map((e) => (
-                  <div
-                    key={e.id}
-                    style={{
-                      padding: "12px",
-                      borderRadius: "12px",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "10px",
-                        flexWrap: "wrap",
-                      }}
-                    >
+        <div style={{ ...appStyles.card, marginTop: 18 }}>
+          <SectionTitle title="Manage Records" subtitle="Edit or delete entries without hunting through Firestore." />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: mobileStack ? "1fr" : "1fr 1fr",
+              gap: 18,
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Expenses</div>
+              <div style={{ display: "grid", gap: 10 }}>
+                {filteredExpenses.slice(0, 8).map((item) => (
+                  <div key={item.id} style={{ padding: 12, borderRadius: 14, background: "rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                       <div>
-                        <strong>{e.category || "Uncategorized"}</strong>
-                        <div style={{ fontSize: "13px", opacity: 0.8 }}>
-                          {e.date || "No date"}
-                        </div>
-                        <div style={{ marginTop: "6px" }}>
-                          ${Number(e.amount || 0).toFixed(2)}
-                        </div>
+                        <div style={{ fontWeight: 700 }}>{item.category}</div>
+                        <div style={{ color: appStyles.muted, fontSize: 14 }}>{item.date || "No date"}</div>
+                        {item.note ? <div style={{ color: appStyles.muted, fontSize: 13, marginTop: 4 }}>{item.note}</div> : null}
                       </div>
-
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <Button
-                          onClick={() => startEditExpense(e)}
-                          style={{
-                            background: appStyles.warning,
-                            color: "#111",
-                            padding: "6px 10px",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Edit
-                        </Button>
-
-                        <Button
-                          onClick={() => deleteExpense(e.id)}
-                          style={{
-                            background: appStyles.danger,
-                            padding: "6px 10px",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                      <div style={{ fontWeight: 800 }}>{currency(item.amount)}</div>
                     </div>
-
-                    {e.receipt && (
-                      <img
-                        src={e.receipt}
-                        alt="receipt"
-                        style={{
-                          width: "70px",
-                          height: "70px",
-                          objectFit: "cover",
-                          borderRadius: "8px",
-                          cursor: "pointer",
-                          border: "1px solid rgba(255,255,255,0.12)",
-                          marginTop: "10px",
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingExpenseId(item.id);
+                          setExpenseForm({
+                            date: item.date || todayString(),
+                            category: item.category || "Tournament",
+                            amount: String(item.amount || ""),
+                            note: item.note || "",
+                            receipt: item.receipt || "",
+                          });
+                          window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
-                        onClick={() => setSelectedReceipt(e.receipt)}
-                      />
-                    )}
+                        style={{ ...buttonStyle, background: appStyles.accent, padding: "10px 14px" }}
+                      >
+                        Edit
+                      </button>
+                      <button type="button" onClick={() => removeExpense(item)} style={{ ...buttonStyle, background: appStyles.bad, padding: "10px 14px" }}>
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-          </Card>
+            </div>
 
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Income</h2>
-
-            {income.length === 0 ? (
-              <p style={{ opacity: 0.7 }}>No income yet.</p>
-            ) : (
-              <div style={{ display: "grid", gap: "12px" }}>
-                {income.map((i) => (
-                  <div
-                    key={i.id}
-                    style={{
-                      padding: "12px",
-                      borderRadius: "12px",
-                      background: "rgba(255,255,255,0.04)",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "10px",
-                        flexWrap: "wrap",
-                      }}
-                    >
+            <div>
+              <div style={{ fontWeight: 800, marginBottom: 10 }}>Income</div>
+              <div style={{ display: "grid", gap: 10 }}>
+                {filteredIncome.slice(0, 8).map((item) => (
+                  <div key={item.id} style={{ padding: 12, borderRadius: 14, background: "rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                       <div>
-                        <strong>{i.source || "No source"}</strong>
-                        <div style={{ fontSize: "13px", opacity: 0.8 }}>
-                          {i.date || "No date"}
-                        </div>
-                        <div style={{ marginTop: "6px" }}>
-                          ${Number(i.amount || 0).toFixed(2)}
-                        </div>
+                        <div style={{ fontWeight: 700 }}>{item.source}</div>
+                        <div style={{ color: appStyles.muted, fontSize: 14 }}>{item.date || "No date"}</div>
+                        {item.note ? <div style={{ color: appStyles.muted, fontSize: 13, marginTop: 4 }}>{item.note}</div> : null}
                       </div>
-
-                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                        <Button
-                          onClick={() => startEditIncome(i)}
-                          style={{
-                            background: appStyles.warning,
-                            color: "#111",
-                            padding: "6px 10px",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Edit
-                        </Button>
-
-                        <Button
-                          onClick={() => deleteIncome(i.id)}
-                          style={{
-                            background: appStyles.danger,
-                            padding: "6px 10px",
-                            fontSize: "12px",
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                      <div style={{ fontWeight: 800, color: appStyles.good }}>{currency(item.amount)}</div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-
-          <Card>
-            <h2 style={{ marginTop: 0 }}>Spending by Category</h2>
-
-            {chartData.length === 0 ? (
-              <p style={{ opacity: 0.7 }}>No data to chart yet.</p>
-            ) : (
-              <div style={{ display: "grid", gap: "12px" }}>
-                {chartData.map((item) => (
-                  <div key={item.category}>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: "4px",
-                        fontSize: "13px",
-                      }}
-                    >
-                      <span>{item.category}</span>
-                      <span>${item.amount.toFixed(2)}</span>
-                    </div>
-
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "12px",
-                        background: "rgba(255,255,255,0.08)",
-                        borderRadius: "999px",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: `${(item.amount / maxChartValue) * 100}%`,
-                          height: "100%",
-                          background: `linear-gradient(90deg, ${appStyles.accent2}, ${appStyles.accent})`,
-                          borderRadius: "999px",
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingIncomeId(item.id);
+                          setIncomeForm({
+                            date: item.date || todayString(),
+                            source: item.source || "Tournament Winnings",
+                            amount: String(item.amount || ""),
+                            note: item.note || "",
+                          });
+                          window.scrollTo({ top: 0, behavior: "smooth" });
                         }}
-                      />
+                        style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a", padding: "10px 14px" }}
+                      >
+                        Edit
+                      </button>
+                      <button type="button" onClick={() => removeIncome(item)} style={{ ...buttonStyle, background: appStyles.bad, padding: "10px 14px" }}>
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </Card>
-        </>
-      )}
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {selectedReceipt && (
+      {selectedReceipt ? (
         <div
           onClick={() => setSelectedReceipt(null)}
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.85)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            background: "rgba(0,0,0,0.88)",
+            display: "grid",
+            placeItems: "center",
+            padding: 20,
             zIndex: 9999,
-            cursor: "pointer",
-            padding: "20px",
           }}
         >
-          <div style={{ position: "relative", textAlign: "center" }}>
-            <button
-              onClick={() => setSelectedReceipt(null)}
-              style={{
-                position: "absolute",
-                top: "-12px",
-                right: "-12px",
-                width: "36px",
-                height: "36px",
-                borderRadius: "999px",
-                border: "none",
-                background: appStyles.danger,
-                color: "#fff",
-                fontSize: "20px",
-                fontWeight: "bold",
-                cursor: "pointer",
-                boxShadow: appStyles.shadow,
-              }}
-            >
-              ×
-            </button>
-
-            <img
-              src={selectedReceipt}
-              alt="full receipt"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                maxWidth: "90vw",
-                maxHeight: "80vh",
-                borderRadius: "12px",
-                boxShadow: "0 0 30px rgba(0,0,0,0.7)",
-              }}
-            />
-            <p style={{ marginTop: "10px", color: "#ccc" }}>
-              Tap anywhere to close
-            </p>
+          <div style={{ maxWidth: "92vw", maxHeight: "92vh" }}>
+            <img src={selectedReceipt} alt="Full receipt" style={{ maxWidth: "100%", maxHeight: "84vh", borderRadius: 16 }} />
+            <div style={{ color: "#d7e6ff", textAlign: "center", marginTop: 10 }}>Tap anywhere to close</div>
           </div>
         </div>
-      )}
+      ) : null}
+
+      {toast ? (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 18,
+            right: 18,
+            background: toast.type === "error" ? "rgba(255,107,107,0.96)" : "rgba(34,197,94,0.96)",
+            color: "#fff",
+            padding: "12px 16px",
+            borderRadius: 12,
+            fontWeight: 700,
+            zIndex: 10000,
+            maxWidth: 340,
+          }}
+        >
+          {toast.message}
+        </div>
+      ) : null}
+
+      {dataLoading ? (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.18)", display: "grid", placeItems: "center", zIndex: 9998 }}>
+          <div style={{ ...appStyles.card, fontWeight: 800 }}>Loading your bowling business HQ…</div>
+        </div>
+      ) : null}
     </div>
   );
 }
+
+export default App;

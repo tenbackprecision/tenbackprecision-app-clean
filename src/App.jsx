@@ -21,12 +21,12 @@ import {
 
 /* ---------- FIREBASE ---------- */
 const firebaseConfig = {
-  apiKey: "AIzaSyDXtklrqnwH7lisLkF2xg12bLS3fhKTdco",
-  authDomain: "ten-back-tracker.firebaseapp.com",
-  projectId: "ten-back-tracker",
-  storageBucket: "ten-back-tracker.firebasestorage.app",
-  messagingSenderId: "565303600694",
-  appId: "1:565303600694:web:c6a21ad7decf1493ab5a97",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
@@ -589,7 +589,8 @@ export default function App() {
     fontSize: mobileStack ? "28px" : "34px",
   }}
 >
-  🎳 TEN BACK PRECISION v1000
+
+  🎳 TEN BACK PRECISION v1000 🔥
 </h1>          <p
             style={{
               color: appStyles.muted,
@@ -598,7 +599,7 @@ export default function App() {
               maxWidth: "700px",
             }}
           >
-            Bowling LLC tracker for expenses, income, receipts, and reports. BUILD V1000
+            Bowling LLC tracker for expenses, income, receipts, and reports. BUILD v1000 🔥
           </p>
         </div>
 

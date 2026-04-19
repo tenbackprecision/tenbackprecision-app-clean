@@ -508,26 +508,24 @@ const optionStyle = {
     );
   }
 
-  function SectionTitle({ title, subtitle, right }) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: mobileStack ? "flex-start" : "center",
-          flexDirection: mobileStack ? "column" : "row",
-          marginBottom: 14,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800 }}>{title}</div>
-          {subtitle ? <div style={{ color: appStyles.muted, marginTop: 4 }}>{subtitle}</div> : null}
-        </div>
-        {right || null}
-      </div>
-    );
-  }
+return (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      flexDirection: "column",
+      textAlign: "center",
+      marginBottom: 14,
+      gap: 6,
+    }}
+  >
+    <div style={{ fontSize: 22, fontWeight: 800 }}>{title}</div>
+    {subtitle ? (
+      <div style={{ color: appStyles.muted }}>{subtitle}</div>
+    ) : null}
+  </div>
+);  }
 
   function ReceiptCard({ item }) {
     return (
@@ -617,7 +615,7 @@ const optionStyle = {
             Bowling LLC tracker for expenses, income, receipts, and reports. BUILD {APP_VERSION}
           </p>
 
-          <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "grid", gap: 8 }}>
             <input
               placeholder="Email"
               value={authForm.email}
@@ -678,7 +676,7 @@ const optionStyle = {
             justifyContent: "space-between",
             alignItems: mobileStack ? "flex-start" : "center",
             flexDirection: mobileStack ? "column" : "row",
-            gap: 14,
+            gap: 10,
             marginBottom: 18,
           }}
         >
@@ -701,7 +699,7 @@ const optionStyle = {
           style={{
             display: "grid",
             gridTemplateColumns: mobileStack ? "1fr" : "repeat(4, minmax(0, 1fr))",
-            gap: 14,
+            gap: 10,
             marginBottom: 18,
           }}
         >
@@ -728,7 +726,7 @@ const optionStyle = {
             style={{
               display: "grid",
               gridTemplateColumns: mobileStack ? "1fr" : "repeat(3, minmax(0, 1fr))",
-              gap: 12,
+              gap: 8,
               marginBottom: 14,
             }}
           >
@@ -768,7 +766,7 @@ const optionStyle = {
               style={{
                 display: "grid",
                 gridTemplateColumns: mobileStack ? "1fr" : "1.3fr 0.9fr",
-                gap: 18,
+                gap: 10,
                 marginBottom: 18,
               }}
             >
@@ -812,13 +810,13 @@ const optionStyle = {
               style={{
                 display: "grid",
                 gridTemplateColumns: mobileStack ? "1fr" : "1.05fr 0.95fr",
-                gap: 18,
+                gap: 10,
                 marginBottom: 18,
               }}
             >
               <div style={appStyles.card}>
                 <SectionTitle title={editingExpenseId ? "Edit Expense" : "Add Expense"} subtitle="Receipt-ready expense entry." />
-                <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gap: 8 }}>
                   <input type="date" value={expenseForm.date} onChange={(e) => setExpenseForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
                   <select
   value={expenseForm.category}
@@ -850,7 +848,7 @@ const optionStyle = {
 
               <div style={appStyles.card}>
                 <SectionTitle title={editingIncomeId ? "Edit Income" : "Add Income"} subtitle="Track winnings, payouts, and side money." />
-                <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gap: 8 }}>
                   <input type="date" value={incomeForm.date} onChange={(e) => setIncomeForm((prev) => ({ ...prev, date: e.target.value }))} style={fieldStyle} />
 <select
   value={incomeForm.source}
@@ -881,7 +879,7 @@ const optionStyle = {
               style={{
                 display: "grid",
                 gridTemplateColumns: mobileStack ? "1fr" : "1fr 1fr",
-                gap: 18,
+                gap: 10,
               }}
             >
               <div style={appStyles.card}>
@@ -896,7 +894,7 @@ const optionStyle = {
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          gap: 12,
+                          gap: 8,
                           padding: "12px 14px",
                           borderRadius: 14,
                           background: "rgba(255,255,255,0.06)",
@@ -923,7 +921,7 @@ const optionStyle = {
                 ) : (
                   <div style={{ display: "grid", gap: 10 }}>
                     {receipts.slice(0, 4).map((item) => (
-                      <div key={item.id} style={{ display: "grid", gridTemplateColumns: "88px 1fr auto", gap: 12, alignItems: "center", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 10 }}>
+                      <div key={item.id} style={{ display: "grid", gridTemplateColumns: "88px 1fr auto", gap: 8, alignItems: "center", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 10 }}>
                         <img src={item.receipt} alt="Receipt thumbnail" style={{ width: 88, height: 88, objectFit: "cover", borderRadius: 12 }} />
                         <div>
                           <div style={{ fontWeight: 700 }}>{item.category}</div>
@@ -947,7 +945,7 @@ const optionStyle = {
                 style={{
                   display: "grid",
                   gridTemplateColumns: mobileStack ? "1fr" : "repeat(3, minmax(0, 1fr))",
-                  gap: 14,
+                  gap: 10,
                 }}
               >
                 {receipts.map((item) => (
@@ -964,7 +962,7 @@ const optionStyle = {
             style={{
               display: "grid",
               gridTemplateColumns: mobileStack ? "1fr" : "1fr 1fr",
-              gap: 18,
+              gap: 10,
             }}
           >
             <div>

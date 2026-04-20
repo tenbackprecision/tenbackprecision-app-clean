@@ -46,7 +46,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const APP_VERSION = "v1003";
+const APP_VERSION = "v1005";
 const MAX_RECEIPT_SIZE_MB = 5;
 const CHART_COLORS = [
   "#7dd3fc",

@@ -1035,7 +1035,8 @@ function App() {
   accept="image/*"
   style={{ display: "none" }}
   onChange={(e) => void handleReceiptFile(e.target.files?.[0])}
-/>                  </label>
+/>
+	 </label>
                   <div
                     style={{
                       display: "flex",

@@ -79,6 +79,9 @@ const incomeSources = [
 
 const todayString = () => new Date().toISOString().slice(0, 10);
 const monthKey = (date) => (date ? String(date).slice(0, 7) : "No Date");
+
+const yearKey = (date) => (date ? String(date).slice(0, 4) : "No Year");
+
 const currency = (value) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -393,6 +396,126 @@ function App() {
       showToast("Could not delete income.", "error");
     }
   }
+
+function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-8") {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function toCsv(rows) {
+  return rows
+    .map((row) =>
+      row
+        .map((cell) => {
+          const value = String(cell ?? "");
+          const escaped = value.replace(/"/g, '""');
+          return /[",\n]/.test(escaped) ? `"${escaped}"` : escaped;
+        })
+        .join(",")
+    )
+    .join("\n");
+}
+
+function exportTransactionsCsv() {
+  const rows = [
+    ["Type", "Date", "Category/Source", "Amount", "Note", "Has Receipt"],
+    ...expenses.map((item) => [
+      "Expense",
+      item.date || "",
+      item.category || "",
+      Number(item.amount || 0).toFixed(2),
+      item.note || "",
+      item.receipt ? "Yes" : "No",
+    ]),
+    ...income.map((item) => [
+      "Income",
+      item.date || "",
+      item.source || "",
+      Number(item.amount || 0).toFixed(2),
+      item.note || "",
+      "No",
+    ]),
+  ];
+
+  downloadTextFile(
+    `ten-back-precision-transactions-${APP_VERSION}.csv`,
+    toCsv(rows),
+    "text/csv;charset=utf-8"
+  );
+  showToast("Transactions CSV exported.");
+}
+
+function exportTaxSummaryCsv() {
+  const yearlyMap = {};
+
+  expenses.forEach((item) => {
+    const year = yearKey(item.date);
+    if (!yearlyMap[year]) {
+      yearlyMap[year] = { year, income: 0, expenses: 0, receipts: 0 };
+    }
+    yearlyMap[year].expenses += Number(item.amount || 0);
+    if (item.receipt) yearlyMap[year].receipts += 1;
+  });
+
+  income.forEach((item) => {
+    const year = yearKey(item.date);
+    if (!yearlyMap[year]) {
+      yearlyMap[year] = { year, income: 0, expenses: 0, receipts: 0 };
+    }
+    yearlyMap[year].income += Number(item.amount || 0);
+  });
+
+  const expenseByCategory = {};
+  expenses.forEach((item) => {
+    const key = item.category || "Other";
+    expenseByCategory[key] = (expenseByCategory[key] || 0) + Number(item.amount || 0);
+  });
+
+  const incomeBySource = {};
+  income.forEach((item) => {
+    const key = item.source || "Other";
+    incomeBySource[key] = (incomeBySource[key] || 0) + Number(item.amount || 0);
+  });
+
+  const rows = [
+    ["TEN BACK PRECISION TAX SUMMARY", APP_VERSION],
+    [],
+    ["YEAR", "TOTAL INCOME", "TOTAL EXPENSES", "NET PROFIT", "RECEIPTS COUNT"],
+    ...Object.values(yearlyMap)
+      .sort((a, b) => b.year.localeCompare(a.year))
+      .map((item) => [
+        item.year,
+        item.income.toFixed(2),
+        item.expenses.toFixed(2),
+        (item.income - item.expenses).toFixed(2),
+        item.receipts,
+      ]),
+    [],
+    ["EXPENSE CATEGORY", "TOTAL"],
+    ...Object.entries(expenseByCategory)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, total]) => [name, total.toFixed(2)]),
+    [],
+    ["INCOME SOURCE", "TOTAL"],
+    ...Object.entries(incomeBySource)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, total]) => [name, total.toFixed(2)]),
+  ];
+
+  downloadTextFile(
+    `ten-back-precision-tax-summary-${APP_VERSION}.csv`,
+    toCsv(rows),
+    "text/csv;charset=utf-8"
+  );
+  showToast("Tax summary exported.");
+}
 
   const months = useMemo(() => {
     const set = new Set([
@@ -830,38 +953,31 @@ function App() {
             subtitle="Add income, expenses, and receipts without hunting through menus."
           />
 
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              flexWrap: "wrap",
-              justifyContent: "center",
-              marginBottom: 14,
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setActiveView("dashboard")}
-              style={{ ...buttonStyle, background: appStyles.accent }}
-            >
-              Add Expense
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView("dashboard")}
-              style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}
-            >
-              Add Income
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView("receipts")}
-              style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}
-            >
-              Upload Receipt
-            </button>
-          </div>
-
+<div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginBottom: 14 }}>
+  <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent }}>
+    Add Expense
+  </button>
+  <button type="button" onClick={() => setActiveView("dashboard")} style={{ ...buttonStyle, background: appStyles.accent2, color: "#06203a" }}>
+    Add Income
+  </button>
+  <button type="button" onClick={() => setActiveView("receipts")} style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}>
+    Upload Receipt
+  </button>
+  <button
+    type="button"
+    onClick={exportTransactionsCsv}
+    style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}
+  >
+    Export CSV
+  </button>
+  <button
+    type="button"
+    onClick={exportTaxSummaryCsv}
+    style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}
+  >
+    Tax Summary
+  </button>
+</div>
           <div
             style={{
               display: "grid",

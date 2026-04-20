@@ -503,6 +503,7 @@ function App() {
     accent2: "#67e8f9",
     good: "#57f287",
     bad: "#ff6b6b",
+    badDark: "8b1e2d",
   };
 
   const fieldStyle = {
@@ -814,7 +815,7 @@ function App() {
             label="Net Profit"
             value={currency(profit)}
             subValue={profit >= 0 ? "Looking sharp." : "Lane fees are swinging heavy."}
-            valueColor={profit >= 0 ? appStyles.good : appStyles.bad}
+            valueColor={profit >= 0 ? appStyles.good : appStyles.badDark}
           />
           <StatCard
             label="Receipts Uploaded"
@@ -1029,14 +1030,12 @@ function App() {
                     }}
                   >
                     {expenseForm.receipt ? "Receipt added ✓" : "Upload receipt"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      style={{ display: "none" }}
-                      onChange={(e) => void handleReceiptFile(e.target.files?.[0])}
-                    />
-                  </label>
+<input
+  type="file"
+  accept="image/*"
+  style={{ display: "none" }}
+  onChange={(e) => void handleReceiptFile(e.target.files?.[0])}
+/>                  </label>
                   <div
                     style={{
                       display: "flex",

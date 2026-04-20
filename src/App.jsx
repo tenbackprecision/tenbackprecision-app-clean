@@ -815,7 +815,7 @@ function App() {
             label="Net Profit"
             value={currency(profit)}
             subValue={profit >= 0 ? "Looking sharp." : "Lane fees are swinging heavy."}
-            valueColor={profit >= 0 ? appStyles.good : appStyles.badDark}
+            valueColor={profit >= 0 ? appStyles.good : "#8b1e2d"}
           />
           <StatCard
             label="Receipts Uploaded"

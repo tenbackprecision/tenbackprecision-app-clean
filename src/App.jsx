@@ -244,8 +244,6 @@ function App() {
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
 
-import * as XLSX from "xlsx";
-
 function handleImportFile(file) {
   if (!file) return;
 

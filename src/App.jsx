@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { initializeApp } from "firebase/app";
 import {
   createUserWithEmailAndPassword,
@@ -92,6 +93,111 @@ const currency = (value) =>
 async function compressImage(file, maxWidth = 1600, quality = 0.8) {
   if (!file || !file.type?.startsWith("image/")) return null;
 
+function downloadTextFile(filename, content) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+
+  document.body.removeChild(link);
+}
+
+function toCsv(rows) {
+  if (!rows.length) return "";
+
+  const headers = Object.keys(rows[0]);
+
+  const csv = [
+    headers.join(","),
+    ...rows.map((row) =>
+      headers.map((field) => `"${String(row[field] ?? "").replace(/"/g, '""')}"`).join(",")
+    ),
+  ].join("\n");
+
+  return csv;
+}
+
+function exportTransactionsCsv() {
+  const rows = [
+    ...expenses.map((e) => ({
+      Type: "Expense",
+      Date: e.date,
+      Category: e.category,
+      Amount: e.amount,
+      Note: e.note,
+    })),
+    ...income.map((i) => ({
+      Type: "Income",
+      Date: i.date,
+      Category: i.source,
+      Amount: i.amount,
+      Note: i.note,
+    })),
+  ];
+
+  const csv = toCsv(rows);
+  downloadTextFile("transactions.csv", csv);
+}
+
+function exportTaxSummaryCsv() {
+  const grouped = {};
+
+  expenses.forEach((e) => {
+    const key = e.category || "Other";
+    grouped[key] = (grouped[key] || 0) + Number(e.amount || 0);
+  });
+
+  const rows = Object.entries(grouped).map(([category, total]) => ({
+    Category: category,
+    Total: total,
+  }));
+
+  const csv = toCsv(rows);
+  downloadTextFile("tax-summary.csv", csv);
+}
+
+function handleImportFile(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets["All Business Expenses"];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    const mapped = rows.map((row) => ({
+      uid: user.uid,
+      date: row["Date"] || todayString(),
+      category: row["Expense category"] || "Other",
+      amount: Number(row["Amount"] || 0),
+      note: `${row["Merchant"] || ""} ${row["Notes"] || ""}`.trim(),
+      receipt: "",
+      createdAt: serverTimestamp(),
+    }));
+
+    try {
+      for (const item of mapped) {
+        await addDoc(collection(db, "expenses"), item);
+      }
+
+      setExpenses((prev) => [...mapped, ...prev]);
+      showToast("Keeper data imported.");
+    } catch (err) {
+      console.error(err);
+      showToast("Import failed.", "error");
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
   const imageBitmap = await createImageBitmap(file);
   const ratio = Math.min(1, maxWidth / imageBitmap.width);
   const width = Math.round(imageBitmap.width * ratio);
@@ -137,6 +243,46 @@ function App() {
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
+
+import * as XLSX from "xlsx";
+
+function handleImportFile(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets["All Business Expenses"];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    const mapped = rows.map((row) => ({
+      uid: user.uid,
+      date: row["Date"] || todayString(),
+      category: row["Expense category"] || "Other",
+      amount: Number(row["Amount"] || 0),
+      note: `${row["Merchant"] || ""} ${row["Notes"] || ""}`.trim(),
+      receipt: "",
+      createdAt: serverTimestamp(),
+    }));
+
+    try {
+      for (const item of mapped) {
+        await addDoc(collection(db, "expenses"), item);
+      }
+
+      setExpenses((prev) => [...mapped, ...prev]);
+      showToast("Keeper data imported.");
+    } catch (err) {
+      console.error(err);
+      showToast("Import failed.", "error");
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+}
 
   const [authForm, setAuthForm] = useState({
     email: "",
@@ -968,7 +1114,7 @@ function exportTaxSummaryCsv() {
     onClick={exportTransactionsCsv}
     style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)" }}
   >
-    Export CSV
+Export CSV
   </button>
   <button
     type="button"
@@ -977,7 +1123,35 @@ function exportTaxSummaryCsv() {
   >
     Tax Summary
   </button>
+<label
+  style={{
+    ...buttonStyle,
+    background: "#22c55e",
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+  }}
+>
+  Import Keeper File
+  <input
+    type="file"
+    accept=".xlsx,.csv"
+    style={{ display: "none" }}
+    onChange={(e) => handleImportFile(e.target.files?.[0])}
+  />
+</label>
 </div>
+
+<label style={{ ...buttonStyle, background: "#22c55e", cursor: "pointer" }}>
+  Import Keeper File
+  <input
+    type="file"
+    accept=".xlsx, .csv"
+    style={{ display: "none" }}
+    onChange={(e) => handleImportFile(e.target.files?.[0])}
+  />
+</label>
           <div
             style={{
               display: "grid",

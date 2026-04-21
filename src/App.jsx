@@ -1124,7 +1124,8 @@ Export CSV
 <label
   style={{
     ...buttonStyle,
-    background: "#22c55e",
+    background: appStyles.accent2,
+    color: "#06203a",
     cursor: "pointer",
     display: "inline-flex",
     alignItems: "center",
@@ -1136,20 +1137,14 @@ Export CSV
     type="file"
     accept=".xlsx,.csv"
     style={{ display: "none" }}
-    onChange={(e) => handleImportFile(e.target.files?.[0])}
+    onChange={(e) => {
+  handleImportFile(e.target.files?.[0]);
+  e.target.value = null;
+}}
   />
 </label>
 </div>
 
-<label style={{ ...buttonStyle, background: "#22c55e", cursor: "pointer" }}>
-  Import Keeper File
-  <input
-    type="file"
-    accept=".xlsx, .csv"
-    style={{ display: "none" }}
-    onChange={(e) => handleImportFile(e.target.files?.[0])}
-  />
-</label>
           <div
             style={{
               display: "grid",

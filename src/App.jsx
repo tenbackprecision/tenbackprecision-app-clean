@@ -47,7 +47,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const APP_VERSION = "v1005";
+const APP_VERSION = "v1007";
 const MAX_RECEIPT_SIZE_MB = 5;
 const CHART_COLORS = [
   "#7dd3fc",
@@ -1132,7 +1132,7 @@ Export CSV
     justifyContent: "center",
   }}
 >
-  Import Keeper File
+  Import Other Excel
   <input
     type="file"
     accept=".xlsx,.csv"

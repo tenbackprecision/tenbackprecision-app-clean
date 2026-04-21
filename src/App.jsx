@@ -160,6 +160,15 @@ function exportTaxSummaryCsv() {
   downloadTextFile("tax-summary.csv", csv);
 }
 
+function makeExpenseKey(item) {
+  return [
+    String(item.date || "").trim(),
+    String(item.category || "").trim().toLowerCase(),
+    Number(item.amount || 0).toFixed(2),
+    String(item.note || "").trim().toLowerCase(),
+  ].join("|");
+}
+
 function handleImportFile(file) {
   if (!file) return;
 
@@ -172,23 +181,38 @@ function handleImportFile(file) {
     const sheet = workbook.Sheets["All Business Expenses"];
     const rows = XLSX.utils.sheet_to_json(sheet);
 
-    const mapped = rows.map((row) => ({
-      uid: user.uid,
-      date: row["Date"] || todayString(),
-      category: row["Expense category"] || "Other",
-      amount: Number(row["Amount"] || 0),
-      note: `${row["Merchant"] || ""} ${row["Notes"] || ""}`.trim(),
-      receipt: "",
-      createdAt: serverTimestamp(),
-    }));
+    const mapped = rows.map((row) => {
+  const item = {
+    uid: user.uid,
+    date: row["Date"] || todayString(),
+    category: row["Expense category"] || "Other",
+    amount: Number(row["Amount"] || 0),
+    note: `${row["Merchant"] || ""} ${row["Notes"] || ""}`.trim(),
+    receipt: "",
+    createdAt: serverTimestamp(),
+  };
+
+  return {
+    ...item,
+    dedupeKey: makeExpenseKey(item),
+  };
+});
 
     try {
       for (const item of mapped) {
         await addDoc(collection(db, "expenses"), item);
       }
 
-      setExpenses((prev) => [...mapped, ...prev]);
-      showToast("Keeper data imported.");
+      const refreshedSnapshot = await getDocs(
+  query(collection(db, "expenses"), where("uid", "==", user.uid))
+);
+
+setExpenses(
+  refreshedSnapshot.docs.map((docSnap) => ({
+    id: docSnap.id,
+    ...docSnap.data(),
+  }))
+);
     } catch (err) {
       console.error(err);
       showToast("Import failed.", "error");
@@ -242,7 +266,21 @@ function App() {
   const [editingIncomeId, setEditingIncomeId] = useState(null);
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
+  
+async function isDuplicateExpense(newItem) {
+  const q = query(
+    collection(db, "expenses"),
+    where("uid", "==", user.uid),
+    where("date", "==", newItem.date),
+    where("amount", "==", newItem.amount),
+    where("category", "==", newItem.category)
   );
+
+  const snapshot = await getDocs(q);
+  return !snapshot.empty;
+}
+
+);
 
 function handleImportFile(file) {
   if (!file) return;
@@ -267,13 +305,44 @@ function handleImportFile(file) {
     }));
 
     try {
-      for (const item of mapped) {
-        await addDoc(collection(db, "expenses"), item);
-      }
+
+const existingSnapshot = await getDocs(
+  query(collection(db, "expenses"), where("uid", "==", user.uid))
+);
+
+const existingKeys = new Set(
+  existingSnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return data.dedupeKey || makeExpenseKey(data);
+  })
+);
+
+let added = 0;
+let skipped = 0;
+
+for (const item of mapped) {
+  if (existingKeys.has(item.dedupeKey)) {
+    skipped++;
+    continue;
+  }
+
+function makeExpenseKey(item) {
+  return [
+    String(item.date || "").trim(),
+    String(item.category || "").trim().toLowerCase(),
+    Number(item.amount || 0).toFixed(2),
+  ].join("|");
+}
+
+  await addDoc(collection(db, "expenses"), item);
+  existingKeys.add(item.dedupeKey);
+  added++;
+}
+
+showToast(`Imported ${added}, skipped ${skipped} duplicates`);
 
       setExpenses((prev) => [...mapped, ...prev]);
-      showToast("Keeper data imported.");
-    } catch (err) {
+          } catch (err) {
       console.error(err);
       showToast("Import failed.", "error");
     }
@@ -406,7 +475,14 @@ function handleImportFile(file) {
       );
       return;
     }
-
+} else {
+  const ref = await addDoc(collection(db, "expenses"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  setExpenses((prev) => [{ id: ref.id, ...payload }, ...prev]);
+  showToast("Expense saved.");
+}
     try {
       const compressed = await compressImage(file);
       setExpenseForm((prev) => ({ ...prev, receipt: compressed || "" }));
@@ -444,15 +520,38 @@ function handleImportFile(file) {
       return;
     }
 
-    const payload = {
-      uid: user.uid,
-      date: expenseForm.date,
-      category: expenseForm.category,
-      amount: Number(expenseForm.amount),
-      note: expenseForm.note.trim(),
-      receipt: expenseForm.receipt || "",
-      updatedAt: serverTimestamp(),
-    };
+    const baseItem = {
+  uid: user.uid,
+  date: expenseForm.date,
+  category: expenseForm.category,
+  amount: Number(expenseForm.amount),
+  note: expenseForm.note.trim(),
+  receipt: expenseForm.receipt || "",
+};
+
+const payload = {
+  ...baseItem,
+  dedupeKey: makeExpenseKey(baseItem),
+  updatedAt: serverTimestamp(),
+};
+
+if (payload.receipt) {
+ const existingSnapshot = await getDocs(
+  query(collection(db, "expenses"), where("uid", "==", user.uid))
+);
+
+const existingKeys = new Set(
+  existingSnapshot.docs.map((docSnap) => {
+    const data = docSnap.data();
+    return data.dedupeKey || makeExpenseKey(data);
+  })
+);
+
+if (existingKeys.has(payload.dedupeKey)) {
+  showToast("Duplicate expense detected. Not saved.", "error");
+  return;
+}
+}
 
     try {
       if (editingExpenseId) {
@@ -461,13 +560,24 @@ function handleImportFile(file) {
           prev.map((item) => (item.id === editingExpenseId ? { ...item, ...payload } : item))
         );
         showToast("Expense updated.");
+
       } else {
-        const ref = await addDoc(collection(db, "expenses"), {
-          ...payload,
-          createdAt: serverTimestamp(),
-        });
-        setExpenses((prev) => [{ id: ref.id, ...payload }, ...prev]);
-        showToast("Expense saved.");
+  if (payload.receipt) {
+    const exists = await isDuplicateExpense(payload);
+    if (exists) {
+      showToast("Duplicate receipt detected. Expense not saved.", "error");
+      return;
+    }
+  }
+
+  const ref = await addDoc(collection(db, "expenses"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+
+  setExpenses((prev) => [{ id: ref.id, ...payload }, ...prev]);
+  showToast("Expense saved.");
+}
       }
       resetExpenseForm();
     } catch (error) {

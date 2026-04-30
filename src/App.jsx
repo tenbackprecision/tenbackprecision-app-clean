@@ -297,6 +297,43 @@ export default function App() {
     note: "",
   });
 
+  const [perfFilters, setPerFilters] = useState({
+    house: "All",
+    event: "All",
+    startDate: "",
+    endDate: "",
+});
+
+const performanceHouses = [
+  "All",
+  ...new Set(seriesList.map((item) => item.house).filter(Boolean)),
+];
+
+const performanceEvents = [
+  "All",
+  ...new Set(seriesList.map((item) => item.type || item.event).filter(Boolean)),
+];
+
+const filteredSeries = seriesList.filter((item) => {
+  const itemEvent = item.type || item.event;
+
+  const matchesHouse =
+    perfFilters.house === "All" || item.house === perfFilters.house;
+
+  const matchesEvent =
+    perfFilters.event === "All" || itemEvent === perfFilters.event;
+
+  const matchesStart =
+    !perfFilters.startDate ||
+    new Date(item.date) >= new Date(perfFilters.startDate);
+
+  const matchesEnd =
+    !perfFilters.endDate ||
+    new Date(item.date) <= new Date(perfFilters.endDate);
+
+  return matchesHouse && matchesEvent && matchesStart && matchesEnd;
+});
+
   const [newSeries, setNewSeries] = useState({
     date: todayString(),
     house: "",

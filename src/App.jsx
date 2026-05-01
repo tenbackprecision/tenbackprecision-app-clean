@@ -297,11 +297,12 @@ export default function App() {
     note: "",
   });
 
-  const [perfFilters, setPerFilters] = useState({
-    house: "All",
-    event: "All",
-    startDate: "",
-    endDate: "",
+  const [perfFilters, setPerfFilters] = useState({
+  house: "All",
+  event: "All",
+  year: "All",
+  startDate: "",
+  endDate: "",
 });
 
 const performanceHouses = [
@@ -331,7 +332,12 @@ const filteredSeries = seriesList.filter((item) => {
     !perfFilters.endDate ||
     new Date(item.date) <= new Date(perfFilters.endDate);
 
-  return matchesHouse && matchesEvent && matchesStart && matchesEnd;
+const itemYear = new Date(item.date).getFullYear().toString();
+
+const matchesYear =
+  perfFilters.year === "All" || itemYear === perfFilters.year;
+
+  return matchesHouse && matchesEvent && matchesStart && matchesEnd && matchesYear;
 });
 
   const [newSeries, setNewSeries] = useState({
@@ -807,7 +813,7 @@ for (const row of rows) {
       ),
     ]);
     return Array.from(set).filter(Boolean).sort((a, b) => b.localeCompare(a));
-  }, [expenses, income, seriesList, yearMode]);
+  }, [expenses, income, filteredSeries, yearMode]);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter((item) => {
@@ -885,12 +891,12 @@ for (const row of rows) {
   }, [filteredExpenses]);
 
   const performanceSummary = useMemo(() => {
-    const allGames = seriesList.flatMap((s) => s.games || []);
+    const allGames = filteredSeries.flatMap((s) => s.games || []);
     return {
-      totalSeries: seriesList.length,
-      bestSeries: seriesList.length
-        ? Math.max(...seriesList.map((s) => Number(s.total || 0)))
-        : 0,
+totalSeries: filteredSeries.length,
+bestSeries: filteredSeries.length
+  ? Math.max(...filteredSeries.map((s) => Number(s.total || 0)))
+  : 0,
       bestGame: allGames.length ? Math.max(...allGames) : 0,
       overallAverage: allGames.length
         ? (
@@ -1026,10 +1032,9 @@ for (const row of rows) {
   }
 
   if (activeView === "performance") {
-    const sortedSeries = [...seriesList].sort((a, b) =>
-      String(b.date).localeCompare(String(a.date))
-    );
-
+const sortedSeries = [...filteredSeries].sort((a, b) =>
+  String(b.date).localeCompare(String(a.date))
+);
     return (
       <div
         style={{
@@ -1144,6 +1149,68 @@ for (const row of rows) {
               boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
             }}
           >
+
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: 12,
+    marginBottom: 12,
+  }}
+>
+  <select
+    value={perfFilters.house}
+    onChange={(e) =>
+      setPerfFilters({ ...perfFilters, house: e.target.value })
+    }
+    style={inputStyle}
+  >
+    <option value="All">All Houses</option>
+    {[...new Set(seriesList.map((s) => s.house))]
+      .filter(Boolean)
+      .map((house) => (
+        <option key={house} value={house}>
+          {house}
+        </option>
+      ))}
+  </select>
+
+  <select
+    value={perfFilters.event}
+    onChange={(e) =>
+      setPerfFilters({ ...perfFilters, event: e.target.value })
+    }
+    style={inputStyle}
+  >
+    <option value="All">All Events</option>
+    {[...new Set(seriesList.map((s) => s.type || s.event))]
+      .filter(Boolean)
+      .map((event) => (
+        <option key={event} value={event}>
+          {event}
+        </option>
+      ))}
+  </select>
+
+  <select
+    value={perfFilters.year}
+    onChange={(e) =>
+      setPerfFilters({ ...perfFilters, year: e.target.value })
+    }
+    style={inputStyle}
+  >
+    <option value="All">All Years</option>
+    {[...new Set(seriesList.map((s) =>
+      new Date(s.date).getFullYear().toString()
+    ))]
+      .sort((a, b) => b.localeCompare(a))
+      .map((year) => (
+        <option key={year} value={year}>
+          {year}
+        </option>
+      ))}
+  </select>
+</div>
             <SectionTitle
               title="Add Series"
               subtitle="House, event type, games, and notes"

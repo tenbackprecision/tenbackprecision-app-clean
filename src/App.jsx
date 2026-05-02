@@ -32,7 +32,6 @@ const expenseCategories = [
   "Travel",
   "Equipment",
   "Maintenance",
-  "Coaching",
   "Merchandise",
   "Other",
 ];
@@ -41,7 +40,6 @@ const incomeSources = [
   "Tournament Winnings",
   "Side Hustle",
   "Sales",
-  "Sponsorship",
   "Refund",
   "Other",
 ];
@@ -58,8 +56,8 @@ const appStyles = {
   accent: "#ff9560",
   accent2: "#34f0ef",
   accent3: "#7aa7ff",
-  success: "#2bff66",
-  danger: "#8b1e2d",
+  success: "#16a34a",
+  danger: "#b91c1c",
   muted: "#d8e3ff",
 };
 
@@ -264,7 +262,7 @@ export default function App() {
 
   const [filterMonth, setFilterMonth] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [filterYear, setFilterYear] = useState("all");
+  const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
   const [yearMode, setYearMode] = useState("calendar");
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -274,7 +272,7 @@ export default function App() {
   const [screenWidth, setScreenWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
-
+  const [editingSeriesId, setEditingSeriesId] = useState(null);
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState([]);
   const [seriesList, setSeriesList] = useState([]);
@@ -300,7 +298,7 @@ export default function App() {
   const [perfFilters, setPerfFilters] = useState({
   house: "All",
   event: "All",
-  year: "All",
+  year: "currentYear",
   startDate: "",
   endDate: "",
 });
@@ -335,7 +333,7 @@ const filteredSeries = seriesList.filter((item) => {
 const itemYear = new Date(item.date).getFullYear().toString();
 
 const matchesYear =
-  perfFilters.year === "All" || itemYear === perfFilters.year;
+  perfFilters.year === "currentYear" || itemYear === perfFilters.year;
 
   return matchesHouse && matchesEvent && matchesStart && matchesEnd && matchesYear;
 });
@@ -1386,6 +1384,14 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
                         {series.notes}
                       </div>
                     ) : null}
+<div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+<button
+onClick={() => deleteDoc(doc(db, "series", series.id))}
+style={buttonStyle}
+>
+Delete
+</button>
+</div>
                   </div>
                 ))}
               </div>

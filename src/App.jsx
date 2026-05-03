@@ -651,12 +651,18 @@ const unsubSeries = onSnapshot(
     };
 
     try {
-      await addDoc(collection(db, "series"), {
-        ...payload,
-        createdAt: serverTimestamp(),
-      });
+if (editingSeriesId) {
+  await updateDoc(doc(db, "series", editingSeriesId), payload);
+  setEditingSeriesId(null);
+  showToast("Series updated.");
+} else {
+  await addDoc(collection(db, "series"), {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
+  showToast("Series saved.");
+}
       resetSeriesForm();
-      showToast("Series saved.");
     } catch (error) {
       console.error(error);
       showToast("Could not save series.", "error");
@@ -1303,8 +1309,23 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
                     color: "#06203a",
                   }}
                 >
-                  Save Series
+                  {editingSeriesId ? "Update Series" : "Save Series"}
                 </button>
+
+{editingSeriesId ? (
+  <button
+    onClick={() => {
+      setEditingSeriesId(null);
+      resetSeriesForm();
+    }}
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.18)",
+    }}
+  >
+    Cancel Edit
+  </button>
+) : null}
 
                 <button
                   type="button"
@@ -1344,15 +1365,23 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
                 {sortedSeries.slice(0, 10).map((series) => (
-                  <div
-                    key={series.id}
-                    style={{
-                      background: "rgba(255,255,255,0.05)",
-                      border: `1px solid ${appStyles.cardBorder}`,
-                      borderRadius: 14,
-                      padding: 14,
-                    }}
-                  >
+                  
+<div
+  key={series.id}
+  style={{
+    background:
+      editingSeriesId === series.id
+        ? "rgba(255, 200, 0, 0.15)"
+        : "rgba(255,255,255,0.05)",
+    border:
+      editingSeriesId === series.id
+        ? "2px solid #ffc107"
+        : `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 14,
+    padding: 14,
+    transition: "all 0.2s ease",
+  }}
+>
                     <div
                       style={{
                         display: "flex",
@@ -1384,14 +1413,39 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
                         {series.notes}
                       </div>
                     ) : null}
-<div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-<button
-onClick={() => deleteDoc(doc(db, "series", series.id))}
-style={buttonStyle}
+
+<div
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    gap: 12,
+    marginTop: 12,
+  }}
 >
-Delete
-</button>
+  <button
+    onClick={() => {
+      setEditingSeriesId(series.id);
+      setNewSeries({
+        date: series.date,
+        house: series.house,
+        type: series.type,
+        ...series.games,
+        notes: series.notes || "",
+      });
+    }}
+    style={buttonStyle}
+  >
+    Edit
+  </button>
+
+  <button
+    onClick={() => handleDelete(series.id)}
+    style={{ ...buttonStyle, background: "#ff4d4f" }}
+  >
+    Delete
+  </button>
 </div>
+
                   </div>
                 ))}
               </div>

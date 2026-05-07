@@ -1426,12 +1426,17 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
     onClick={() => {
       setEditingSeriesId(series.id);
       setNewSeries({
-        date: series.date,
-        house: series.house,
-        type: series.type,
-        ...series.games,
-        notes: series.notes || "",
-      });
+  date: series.date || todayString(),
+  house: series.house || "",
+  type: series.type || "Practice",
+  game1: series.game1 || series.games?.[0] || "",
+  game2: series.game2 || series.games?.[1] || "",
+  game3: series.game3 || series.games?.[2] || "",
+  game4: series.game4 || series.games?.[3] || "",
+  game5: series.game5 || series.games?.[4] || "",
+  game6: series.game6 || series.games?.[5] || "",
+  notes: series.notes || "",
+});
     }}
     style={buttonStyle}
   >

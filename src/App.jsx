@@ -1633,7 +1633,20 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
     );
   }
 
-  return (
+  async function handleDelete(id) {
+  const confirmed = window.confirm("Delete this series?");
+  if (!confirmed) return;
+
+  try {
+    await deleteDoc(doc(db, "series", id));
+    showToast("Series deleted.");
+  } catch (error) {
+    console.error(error);
+    showToast("Could not delete series.", "error");
+  }
+}
+
+return (
     <div
       style={{
         minHeight: "100vh",

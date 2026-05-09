@@ -1691,29 +1691,73 @@ return (
         fontFamily: "Inter, Arial, sans-serif",
       }}
     >
-<div
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 12,
-    flexWrap: "wrap",
-    marginBottom: 18,
-  }}
->
-  <div>
-    <div style={{ fontSize: isPhone ? 34 : 52, fontWeight: 900, lineHeight: 1 }}>
-      🎳 TEN BACK PRECISION {APP_VERSION}
-    </div>
-    <div style={{ color: appStyles.muted, marginTop: 8, fontSize: 16 }}>
-      Bowling LLC tracker for expenses, income, receipts, and reports.
-    </div>
+<div style={{ textAlign: "center", marginBottom: 18 }}>
+  <div style={pageTitleStyle}>
+    🎳 TEN BACK PRECISION {APP_VERSION}
   </div>
 
-  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-      </div>
-      </div>
+  <div style={pageSubtitleStyle}>
+    Bowling LLC tracker for expenses, income, receipts, and reports.
+  </div>
 
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      gap: 10,
+      flexWrap: "wrap",
+      marginTop: 14,
+    }}
+  >
+    <button
+      type="button"
+      onClick={() => setActiveView("dashboard")}
+      style={{
+        ...buttonStyle,
+        background: appStyles.accent,
+        color: "#1a1633",
+      }}
+    >
+      Dashboard
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setActiveView("receipts")}
+      style={{
+        ...buttonStyle,
+        background: "rgba(255,255,255,0.12)",
+        color: appStyles.text,
+      }}
+    >
+      Receipts
+    </button>
+
+    <button
+      type="button"
+      onClick={() => setActiveView("performance")}
+      style={{
+        ...buttonStyle,
+        background: "rgba(255,255,255,0.12)",
+        color: appStyles.text,
+      }}
+    >
+      Performance
+    </button>
+
+    <button
+      type="button"
+      onClick={() => signOut(auth)}
+      style={{
+        ...buttonStyle,
+        background: "rgba(255,255,255,0.12)",
+        color: appStyles.text,
+      }}
+    >
+      Log Out
+    </button>
+  </div>
+</div>
       <div
         style={{
           display: "grid",

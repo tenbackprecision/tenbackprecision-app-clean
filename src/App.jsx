@@ -21,7 +21,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
-const APP_VERSION = "v1109";
+const APP_VERSION = "v1110";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -1326,13 +1326,14 @@ if (activeView === "performance") {
               />
 
               <div
-                style={{
-                  gridColumn: "1 / -1",
-                  display: "flex",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
-              >
+  		style={{
+    		   gridColumn: "1 / -1",
+    		   display: "flex",
+    		   justifyContent: "center",
+    		   gap: 12,
+    		   flexWrap: "wrap",
+  		}}
+	      >
                 <button
                   type="button"
                   onClick={saveSeries}
@@ -1452,7 +1453,7 @@ if (activeView === "performance") {
     display: "flex",
     justifyContent: "center",
     gap: 12,
-    marginTop: 12,
+    marginTop: "wrap",
   }}
 >
   <button
@@ -2041,7 +2042,14 @@ return (
               style={{ ...inputStyle, resize: "vertical" }}
             />
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div 
+		style={{ 
+		display: "flex",
+		justifyContent: "center",
+		gap: 12,
+		flexWrap: "wrap",
+}}
+>
               <button
                 onClick={saveExpense}
                 style={{
@@ -2115,7 +2123,15 @@ return (
               style={{ ...inputStyle, resize: "vertical" }}
             />
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div
+		style={{
+		display: "flex",
+		justifyContent: "center",
+		gap: 12,
+		flexWrap: "wrap",
+		}}
+		>
+
               <button
                 onClick={saveIncome}
                 style={{
@@ -2173,14 +2189,20 @@ return (
                 <div
                   key={`${item.type}-${item.id}`}
                   style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: `1px solid ${appStyles.cardBorder}`,
-                    borderRadius: 14,
-                    padding: 12,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 10,
-                  }}
+  background: "rgba(255,255,255,0.04)",
+  border: `1px solid ${appStyles.cardBorder}`,
+  borderRadius: 14,
+  padding: 12,
+
+  minHeight: 78,
+  width: "95%",
+
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "space-between",
+
+  gap: 10,
+}}
                 >
                   <div>
                     <div style={{ fontWeight: 800 }}>{item.title}</div>
@@ -2335,7 +2357,15 @@ return (
 
                   {item.note ? <div style={{ marginTop: 8 }}>{item.note}</div> : null}
 
-                  <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+<div
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 10,
+    flexWrap: "wrap",
+  }}
+>
                     <button
                       onClick={() => {
                         setEditingExpenseId(item.id);
@@ -2426,7 +2456,15 @@ return (
 
                   {item.note ? <div style={{ marginTop: 8 }}>{item.note}</div> : null}
 
-                  <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                  <div
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 10,
+    flexWrap: "wrap",
+  }}
+>
                     <button
                       onClick={() => {
                         setEditingIncomeId(item.id);

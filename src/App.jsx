@@ -21,7 +21,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
-const APP_VERSION = "v1100";
+const APP_VERSION = "v1109";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -247,11 +247,12 @@ function SectionTitle({ title, subtitle }) {
     <div style={{ textAlign: "center", marginBottom: 14 }}>
       <div style={{ fontSize: 24, fontWeight: 900 }}>{title}</div>
       {subtitle ? (
-        <div style={{ color: appStyles.muted, marginTop: 6 }}>{subtitle}</div>
+        <div style={{ color: "#dbeafe", marginTop: 6 }}>{subtitle}</div>
       ) : null}
     </div>
   );
 }
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -298,7 +299,7 @@ export default function App() {
   const [perfFilters, setPerfFilters] = useState({
   house: "All",
   event: "All",
-  year: "currentYear",
+  year: "All",
   startDate: "",
   endDate: "",
 });
@@ -330,10 +331,13 @@ const filteredSeries = seriesList.filter((item) => {
     !perfFilters.endDate ||
     new Date(item.date) <= new Date(perfFilters.endDate);
 
+const selectedYear = String(perfFilters.year || "").toLowerCase();
 const itemYear = new Date(item.date).getFullYear().toString();
 
 const matchesYear =
-  perfFilters.year === "currentYear" || itemYear === perfFilters.year;
+  selectedYear === "all" ||
+  selectedYear === "all years" ||
+  itemYear === String(perfFilters.year);
 
   return matchesHouse && matchesEvent && matchesStart && matchesEnd && matchesYear;
 });
@@ -842,12 +846,16 @@ for (const row of rows) {
     return income.filter((item) => {
       const matchesMonth =
         filterMonth === "all" || monthKey(item.date) === filterMonth;
+
       const itemYear =
-        yearMode === "tax" ? getTaxYear(item.date) : getCalendarYear(item.date);
-      const matchesYear = filterYear === "all" || itemYear === filterYear;
+  yearMode === "tax" ? getTaxYear(item.date) : getCalendarYear(item.date);
+
+const matchesYear = filterYear === "all" || itemYear === filterYear;
+
       const matchesSearch =
         !searchTerm ||
         `${item.source} ${item.note} ${item.amount}`
+
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
 
@@ -909,6 +917,32 @@ bestSeries: filteredSeries.length
         : "0.0",
     };
   }, [seriesList]);
+
+const pageTitleStyle = {
+  fontSize: isPhone ? 34 : 52,
+  fontWeight: 900,
+  lineHeight: 1,
+};
+
+const pageSubtitleStyle = {
+  color: appStyles.muted,
+  marginTop: 8,
+  fontSize: 16,
+};
+
+  async function handleDelete(id) {
+  const confirmed = window.confirm("Delete this series?");
+  if (!confirmed) return;
+
+  try {
+    await deleteDoc(doc(db, "series", id));
+    showToast("Series deleted.");
+  } catch (error) {
+    console.error(error);
+    showToast("Could not delete series.", "error");
+  }
+}
+
   if (authLoading) {
     return (
       <div
@@ -956,10 +990,10 @@ bestSeries: filteredSeries.length
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>
+          <div style={pageTitleStyle}>
             🎳 TEN BACK PRECISION {APP_VERSION}
           </div>
-          <div style={{ color: appStyles.muted, marginBottom: 18 }}>
+          <div style={pageSubtitleStyle}>
             Bowling LLC tracker for expenses, income, receipts, reports, and performance.
           </div>
 
@@ -1035,84 +1069,83 @@ bestSeries: filteredSeries.length
     );
   }
 
-  if (activeView === "performance") {
-const sortedSeries = [...filteredSeries].sort((a, b) =>
-  String(b.date).localeCompare(String(a.date))
-);
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: appStyles.background,
-          color: appStyles.text,
-          padding: 20,
-          fontFamily: "Inter, Arial, sans-serif",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 12,
-            flexWrap: "wrap",
-            marginBottom: 18,
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 44, fontWeight: 900 }}>🎳 Performance</div>
-            <div style={{ color: appStyles.muted, marginTop: 6 }}>
-              Track houses, games, and series without junk-drawering the money side.
-            </div>
-          </div>
+if (activeView === "performance") {
+  const sortedSeries = [...filteredSeries].sort((a, b) =>
+    String(b.date).localeCompare(String(a.date))
+  );
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => setActiveView("dashboard")}
-              style={{
-                ...buttonStyle,
-                background: appStyles.accent,
-                color: "#1a1633",
-              }}
-            >
-              Dashboard
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveView("receipts")}
-              style={{
-                ...buttonStyle,
-                background: "rgba(255,255,255,0.12)",
-                color: appStyles.text,
-              }}
-            >
-              Receipts
-            </button>
-
-            <button
-              type="button"
-              onClick={() => signOut(auth)}
-              style={{
-                ...buttonStyle,
-                background: "rgba(255,255,255,0.12)",
-                color: appStyles.text,
-              }}
-            >
-              Log Out
-            </button>
-          </div>
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: appStyles.background,
+        color: appStyles.text,
+        padding: 20,
+        fontFamily: "Inter, Arial, sans-serif",
+      }}
+    >
+      <div style={{ textAlign: "center", marginBottom: 18 }}>
+        <div style={pageTitleStyle}>🎳 Performance</div>
+        <div style={pageSubtitleStyle}>
+          Track houses, games, and series without junk-drawering the money side.
         </div>
 
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: isPhone ? "1fr" : "repeat(4, minmax(0, 1fr))",
-            gap: 14,
-            marginBottom: 18,
+            display: "flex",
+            justifyContent: "center",
+            gap: 10,
+            flexWrap: "wrap",
+            marginTop: 14,
           }}
         >
+          <button
+            type="button"
+            onClick={() => setActiveView("dashboard")}
+            style={{
+              ...buttonStyle,
+              background: appStyles.accent,
+              color: "#1a1633",
+            }}
+          >
+            Dashboard
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveView("receipts")}
+            style={{
+              ...buttonStyle,
+              background: "rgba(255,255,255,0.12)",
+              color: appStyles.text,
+            }}
+          >
+            Receipts
+          </button>
+
+          <button
+            type="button"
+            onClick={() => signOut(auth)}
+            style={{
+              ...buttonStyle,
+              background: "rgba(255,255,255,0.12)",
+              color: appStyles.text,
+            }}
+          >
+            Log Out
+          </button>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isPhone ? "1fr" : "repeat(4, minmax(0, 1fr))",
+          gap: 14,
+          marginBottom: 18,
+        }}
+      >
+
           <StatCard
             label="Series Logged"
             value={String(performanceSummary.totalSeries)}
@@ -1364,7 +1397,7 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
               </div>
             ) : (
               <div style={{ display: "grid", gap: 12 }}>
-                {sortedSeries.slice(0, 10).map((series) => (
+                {sortedSeries.slice(0, 30).map((series) => (
                   
 <div
   key={series.id}
@@ -1495,7 +1528,8 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
+            justifyContent: "center",
+	    textAlign: "center",
             alignItems: "center",
             gap: 12,
             flexWrap: "wrap",
@@ -1503,13 +1537,22 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
           }}
         >
           <div>
-            <div style={{ fontSize: 42, fontWeight: 900 }}>Receipts</div>
-            <div style={{ color: appStyles.muted, marginTop: 6 }}>
+            <div style={pageTitleStyle}>Receipts</div>
+            <div style={pageSubtitleStyle}>
               Receipt gallery and quick preview
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    gap: 10,
+    flexWrap: "wrap",
+    width: "100%",
+    marginTop: 12,
+  }}
+>
             <button
               onClick={() => setActiveView("dashboard")}
               style={{
@@ -1638,19 +1681,6 @@ const sortedSeries = [...filteredSeries].sort((a, b) =>
     );
   }
 
-  async function handleDelete(id) {
-  const confirmed = window.confirm("Delete this series?");
-  if (!confirmed) return;
-
-  try {
-    await deleteDoc(doc(db, "series", id));
-    showToast("Series deleted.");
-  } catch (error) {
-    console.error(error);
-    showToast("Could not delete series.", "error");
-  }
-}
-
 return (
     <div
       style={{
@@ -1661,70 +1691,27 @@ return (
         fontFamily: "Inter, Arial, sans-serif",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 14,
-          flexWrap: "wrap",
-          marginBottom: 18,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: isPhone ? 34 : 52, fontWeight: 900, lineHeight: 1 }}>
-            🎳 TEN BACK PRECISION {APP_VERSION}
-          </div>
-          <div style={{ color: appStyles.muted, marginTop: 8, fontSize: 16 }}>
-            Bowling LLC tracker for expenses, income, receipts, and reports.
-          </div>
-        </div>
+<div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    flexWrap: "wrap",
+    marginBottom: 18,
+  }}
+>
+  <div>
+    <div style={{ fontSize: isPhone ? 34 : 52, fontWeight: 900, lineHeight: 1 }}>
+      🎳 TEN BACK PRECISION {APP_VERSION}
+    </div>
+    <div style={{ color: appStyles.muted, marginTop: 8, fontSize: 16 }}>
+      Bowling LLC tracker for expenses, income, receipts, and reports.
+    </div>
+  </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            onClick={() => setActiveView("dashboard")}
-            style={{
-              ...buttonStyle,
-              background: activeView === "dashboard" ? appStyles.accent : "rgba(255,255,255,0.12)",
-              color: activeView === "dashboard" ? "#1a1633" : appStyles.text,
-            }}
-          >
-            Dashboard
-          </button>
-
-          <button
-            onClick={() => setActiveView("receipts")}
-            style={{
-              ...buttonStyle,
-              background: "rgba(255,255,255,0.12)",
-              color: appStyles.text,
-            }}
-          >
-            Receipts
-          </button>
-
-          <button
-            onClick={() => setActiveView("performance")}
-            style={{
-              ...buttonStyle,
-              background: "rgba(255,255,255,0.12)",
-              color: appStyles.text,
-            }}
-          >
-            Performance
-          </button>
-
-          <button
-            onClick={() => signOut(auth)}
-            style={{
-              ...buttonStyle,
-              background: "rgba(255,255,255,0.12)",
-              color: appStyles.text,
-            }}
-          >
-            Log Out
-          </button>
-        </div>
+  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+      </div>
       </div>
 
       <div

@@ -359,6 +359,9 @@ const matchesYear =
 
   const isPhone = screenWidth < 700;
 
+  const isFoldable = screenWidth >= 700 && screenWidth < 1100;
+
+
   const buttonStyle = {
     padding: "12px 18px",
     borderRadius: 14,

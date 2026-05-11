@@ -21,7 +21,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 
-const APP_VERSION = "v1110";
+const APP_VERSION = "v1111";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -490,14 +490,14 @@ const unsubSeries = onSnapshot(
 let receiptData = "";
 
 try {
-
-try {
   if (
     file.type === "image/heic" ||
-    file.type === "image/heif"
+    file.type === "image/heif" ||
+    file.name?.toLowerCase().endsWith(".heic") ||
+    file.name?.toLowerCase().endsWith(".heif")
   ) {
     showToast(
-      "HEIC photos are not supported yet. Please use JPG screenshots or camera images.",
+      "HEIC photos are not supported yet. Please upload a screenshot or JPG/PNG receipt.",
       "error"
     );
     return;

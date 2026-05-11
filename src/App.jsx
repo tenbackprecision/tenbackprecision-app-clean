@@ -20,6 +20,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import heic2any from "heic2any";
 
 const APP_VERSION = "v1111";
 const MAX_RECEIPT_SIZE_MB = 8;
@@ -491,17 +492,25 @@ let receiptData = "";
 
 try {
   if (
-    file.type === "image/heic" ||
-    file.type === "image/heif" ||
-    file.name?.toLowerCase().endsWith(".heic") ||
-    file.name?.toLowerCase().endsWith(".heif")
-  ) {
-    showToast(
-      "HEIC photos are not supported yet. Please upload a screenshot or JPG/PNG receipt.",
-      "error"
-    );
-    return;
-  }
+  file.type === "image/heic" ||
+  file.type === "image/heif" ||
+  file.name?.toLowerCase().endsWith(".heic") ||
+  file.name?.toLowerCase().endsWith(".heif")
+) {
+  const convertedBlob = await heic2any({
+    blob: file,
+    toType: "image/jpeg",
+    quality: 0.8,
+  });
+
+  file = new File(
+    [Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob],
+    "receipt.jpg",
+    {
+      type: "image/jpeg",
+    }
+  );
+}
 
   receiptData = await compressImage(file);
 } catch (compressError) {

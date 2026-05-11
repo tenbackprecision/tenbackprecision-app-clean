@@ -266,7 +266,9 @@ export default function App() {
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
   const [yearMode, setYearMode] = useState("calendar");
   const [searchTerm, setSearchTerm] = useState("");
-
+  const [receiptYear, setReceiptYear] = useState("all");
+  const [receiptCategory, setReceiptCategory] = useState("all");
+  const [receiptSearch, setReceiptSearch] = useState("");
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
 
@@ -902,8 +904,27 @@ const matchesYear = filterYear === "all" || itemYear === filterYear;
   }, [filteredExpenses, filteredIncome]);
 
   const receiptItems = useMemo(() => {
-    return filteredExpenses.filter((e) => e.receipt).slice(0, 12);
-  }, [filteredExpenses]);
+  return expenses
+    .filter((e) => {
+      if (!e.receipt) return false;
+
+      const itemYear =
+        yearMode === "tax" ? getTaxYear(e.date) : getCalendarYear(e.date);
+
+      const matchesYear = receiptYear === "all" || itemYear === receiptYear;
+      const matchesCategory =
+        receiptCategory === "all" || e.category === receiptCategory;
+      const matchesSearch =
+        !receiptSearch ||
+        `${e.category} ${e.note} ${e.amount}`
+          .toLowerCase()
+          .includes(receiptSearch.toLowerCase());
+
+      return matchesYear && matchesCategory && matchesSearch;
+    })
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+    .slice(0, 24);
+}, [expenses, receiptYear, receiptCategory, receiptSearch, yearMode]);
 
   const performanceSummary = useMemo(() => {
     const allGames = filteredSeries.flatMap((s) => s.games || []);
@@ -1143,7 +1164,11 @@ if (activeView === "performance") {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isPhone ? "1fr" : "repeat(4, minmax(0, 1fr))",
+gridTemplateColumns: isPhone
+  ? "1fr"
+  : isFoldable
+    ? "repeat(2, minmax(0, 1fr))"
+    : "repeat(4, minmax(0, 1fr))",
           gap: 14,
           marginBottom: 18,
         }}
@@ -1590,6 +1615,52 @@ if (activeView === "performance") {
           </div>
         </div>
 
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: isPhone
+      ? "1fr"
+      : isFoldable
+        ? "repeat(2, minmax(0, 1fr))"
+        : "repeat(3, minmax(0, 1fr))",
+    gap: 10,
+    marginBottom: 16,
+  }}
+>
+  <select
+    value={receiptYear}
+    onChange={(e) => setReceiptYear(e.target.value)}
+    style={inputStyle}
+  >
+    <option value="all">All Years</option>
+    {years.map((year) => (
+      <option key={year} value={year}>
+        {year}
+      </option>
+    ))}
+  </select>
+
+  <select
+    value={receiptCategory}
+    onChange={(e) => setReceiptCategory(e.target.value)}
+    style={inputStyle}
+  >
+    <option value="all">All Categories</option>
+    {expenseCategories.map((category) => (
+      <option key={category} value={category}>
+        {category}
+      </option>
+    ))}
+  </select>
+
+  <input
+    value={receiptSearch}
+    onChange={(e) => setReceiptSearch(e.target.value)}
+    placeholder="Search receipts"
+    style={inputStyle}
+  />
+</div>
+
         <div
           style={{
             display: "grid",
@@ -1812,12 +1883,14 @@ return (
 
         <div
           style={{
-            display: "flex",
-            gap: 10,
-            flexWrap: "wrap",
-            justifyContent: "center",
-            marginBottom: 14,
-          }}
+  display: "grid",
+  gridTemplateColumns: isPhone
+    ? "1fr"
+    : isFoldable
+      ? "repeat(2, minmax(0, 1fr))"
+      : "repeat(6, minmax(0, 1fr))",
+  gap: 10,
+}}
         >
           <button
             type="button"

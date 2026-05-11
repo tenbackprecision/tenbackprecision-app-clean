@@ -487,14 +487,26 @@ const unsubSeries = onSnapshot(
       return;
     }
 
-    try {
-      const compressed = await compressImage(file);
-      setExpenseForm((prev) => ({ ...prev, receipt: compressed || "" }));
-      showToast("Receipt added.");
-    } catch (error) {
-      console.error(error);
-      showToast("Could not process receipt.", "error");
-    }
+let receiptData = "";
+
+try {
+  receiptData = await compressImage(file);
+} catch (compressError) {
+  console.error("Compression failed:", compressError);
+}
+
+if (!receiptData) {
+  receiptData = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+setExpenseForm((prev) => ({ ...prev, receipt: receiptData || "" }));
+showToast("Receipt added.");
+
   }
 
   function resetExpenseForm() {

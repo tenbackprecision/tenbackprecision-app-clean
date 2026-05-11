@@ -490,6 +490,19 @@ const unsubSeries = onSnapshot(
 let receiptData = "";
 
 try {
+
+try {
+  if (
+    file.type === "image/heic" ||
+    file.type === "image/heif"
+  ) {
+    showToast(
+      "HEIC photos are not supported yet. Please use JPG screenshots or camera images.",
+      "error"
+    );
+    return;
+  }
+
   receiptData = await compressImage(file);
 } catch (compressError) {
   console.error("Compression failed:", compressError);

@@ -1263,7 +1263,11 @@ gridTemplateColumns: isPhone
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))",
+            gridTemplateColumns: isPhone
+  ? "1fr"
+  : isFoldable
+    ? "repeat(2, minmax(0, 1fr))"
+    : "repeat(4, minmax(0, 1fr))",
             gap: 18,
           }}
         >
@@ -1348,7 +1352,11 @@ gridTemplateColumns: isPhone
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))",
+                gridTemplateColumns: isPhone
+  ? "1fr"
+  : isFoldable
+    ? "repeat(2, minmax(0, 1fr))"
+    : "repeat(4, minmax(0, 1fr))",
                 gap: 12,
               }}
             >
@@ -1683,10 +1691,10 @@ gridTemplateColumns: isPhone
   style={{
     display: "grid",
     gridTemplateColumns: isPhone
-      ? "1fr"
-      : isFoldable
-        ? "repeat(2, minmax(0, 1fr))"
-        : "repeat(3, minmax(0, 1fr))",
+  ? "1fr"
+  : isFoldable
+    ? "repeat(2, minmax(0, 1fr))"
+    : "repeat(4, minmax(0, 1fr))",
     gap: 10,
     marginBottom: 16,
   }}
@@ -1728,7 +1736,11 @@ gridTemplateColumns: isPhone
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isPhone ? "1fr" : "repeat(2, minmax(0, 1fr))",
+            gridTemplateColumns: isPhone
+  ? "1fr"
+  : isFoldable
+    ? "repeat(2, minmax(0, 1fr))"
+    : "repeat(4, minmax(0, 1fr))",
             gap: 14,
           }}
         >
@@ -1900,7 +1912,11 @@ return (
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isPhone ? "1fr" : "repeat(6, minmax(0, 1fr))",
+          gridTemplateColumns: isPhone
+  ? "1fr"
+  : isFoldable
+    ? "repeat(2, minmax(0, 1fr))"
+    : "repeat(4, minmax(0, 1fr))",
           gap: 14,
           marginBottom: 18,
         }}

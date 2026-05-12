@@ -960,21 +960,40 @@ const matchesYear = filterYear === "all" || itemYear === filterYear;
     .slice(0, 24);
 }, [expenses, receiptYear, receiptCategory, receiptSearch, yearMode]);
 
-  const performanceSummary = useMemo(() => {
-    const allGames = filteredSeries.flatMap((s) => s.games || []);
-    return {
-totalSeries: filteredSeries.length,
-bestSeries: filteredSeries.length
-  ? Math.max(...filteredSeries.map((s) => Number(s.total || 0)))
-  : 0,
-      bestGame: allGames.length ? Math.max(...allGames) : 0,
-      overallAverage: allGames.length
-        ? (
-            allGames.reduce((sum, g) => sum + Number(g || 0), 0) / allGames.length
-          ).toFixed(1)
-        : "0.0",
-    };
-  }, [seriesList]);
+const performanceSummary = useMemo(() => {
+  const sorted = [...filteredSeries].sort((a, b) =>
+    String(b.date).localeCompare(String(a.date))
+  );
+
+  const allGames = filteredSeries.flatMap((s) => s.games || []);
+
+  const last5 = sorted.slice(0, 5).flatMap((s) => s.games || []);
+  const last10 = sorted.slice(0, 10).flatMap((s) => s.games || []);
+
+  const avg = (games) =>
+    games.length
+      ? (
+          games.reduce((sum, g) => sum + Number(g || 0), 0) / games.length
+        ).toFixed(1)
+      : "0.0";
+
+  return {
+    totalSeries: filteredSeries.length,
+    bestSeries: filteredSeries.length
+      ? Math.max(...filteredSeries.map((s) => Number(s.total || 0)))
+      : 0,
+    bestGame: allGames.length ? Math.max(...allGames) : 0,
+    overallAverage: avg(allGames),
+    last5Average: avg(last5),
+    last10Average: avg(last10),
+    trend:
+      Number(avg(last5)) > Number(avg(last10))
+        ? "Trending Up 🔥"
+        : Number(avg(last5)) < Number(avg(last10))
+          ? "Trending Down 🧊"
+          : "Holding Steady 🎯",
+  };
+}, [filteredSeries]);
 
 const pageTitleStyle = {
   fontSize: isPhone ? 34 : 52,
@@ -1218,6 +1237,17 @@ gridTemplateColumns: isPhone
             value={String(performanceSummary.overallAverage)}
             subValue="Across all saved games"
           />
+<StatCard
+  label="Last 5 Avg"
+  value={String(performanceSummary.last5Average)}
+  subValue={performanceSummary.trend}
+/>
+
+<StatCard
+  label="Last 10 Avg"
+  value={String(performanceSummary.last10Average)}
+  subValue="Recent performance window"
+/>
           <StatCard
             label="Best Series"
             value={String(performanceSummary.bestSeries)}
@@ -1870,7 +1900,7 @@ return (
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isPhone ? "1fr" : "repeat(4, minmax(0, 1fr))",
+          gridTemplateColumns: isPhone ? "1fr" : "repeat(6, minmax(0, 1fr))",
           gap: 14,
           marginBottom: 18,
         }}

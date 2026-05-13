@@ -22,7 +22,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1111";
+const APP_VERSION = "v1112";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -995,6 +995,33 @@ const performanceSummary = useMemo(() => {
   };
 }, [filteredSeries]);
 
+const houseAverages = useMemo(() => {
+  const grouped = {};
+
+  filteredSeries.forEach((series) => {
+    const house = series.house || "Unknown House";
+    const games = series.games || [];
+
+    if (!grouped[house]) {
+      grouped[house] = [];
+    }
+
+    grouped[house].push(...games.map((g) => Number(g || 0)).filter((g) => g > 0));
+  });
+
+  return Object.entries(grouped)
+    .map(([house, games]) => ({
+      house,
+      average: games.length
+        ? (
+            games.reduce((sum, g) => sum + g, 0) / games.length
+          ).toFixed(1)
+        : "0.0",
+      games: games.length,
+    }))
+    .sort((a, b) => Number(b.average) - Number(a.average));
+}, [filteredSeries]);
+
 const pageTitleStyle = {
   fontSize: isPhone ? 34 : 52,
   fontWeight: 900,
@@ -1476,6 +1503,58 @@ gridTemplateColumns: isPhone
             </div>
           </div>
 
+<div
+  style={{
+    background: "rgba(255,255,255,0.05)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 18,
+    padding: 18,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+  }}
+>
+  <SectionTitle
+    title="House Averages"
+    subtitle="Average score by bowling center based on current filters"
+  />
+
+  {houseAverages.length === 0 ? (
+    <div style={{ color: appStyles.muted, textAlign: "center" }}>
+      No house averages yet.
+    </div>
+  ) : (
+    <div style={{ display: "grid", gap: 10 }}>
+      {houseAverages.map((item) => (
+        <div
+          key={item.house}
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: `1px solid ${appStyles.cardBorder}`,
+            borderRadius: 14,
+            padding: 12,
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 900 }}>{item.house}</div>
+            <div style={{ color: appStyles.muted, fontSize: 14 }}>
+              {item.games} games tracked
+            </div>
+          </div>
+
+          <div style={{ fontSize: 22, fontWeight: 900 }}>
+            {item.average}
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
+
           <div
             style={{
               background: "rgba(255,255,255,0.05)",
@@ -1553,7 +1632,8 @@ gridTemplateColumns: isPhone
     display: "flex",
     justifyContent: "center",
     gap: 12,
-    marginTop: "wrap",
+    marginTop: 12,
+    flexWrap: "wrap",
   }}
 >
   <button

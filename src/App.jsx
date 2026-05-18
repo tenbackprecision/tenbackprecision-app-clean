@@ -261,6 +261,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
+  const [showHouseAverages, setShowHouseAverages] = useState(true);
 
   const [filterMonth, setFilterMonth] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -302,7 +303,7 @@ export default function App() {
   const [perfFilters, setPerfFilters] = useState({
   house: "All",
   event: "All",
-  year: "All",
+  year: String(new Date().getFullYear()),
   startDate: "",
   endDate: "",
 });
@@ -1022,6 +1023,36 @@ const houseAverages = useMemo(() => {
     .sort((a, b) => Number(b.average) - Number(a.average));
 }, [filteredSeries]);
 
+const miniPerformanceStats = useMemo(() => {
+  const gamesThisYear = filteredSeries.reduce(
+    (sum, series) => sum + (series.games || []).length,
+    0
+  );
+
+  const houseCounts = {};
+  const eventCounts = {};
+
+  filteredSeries.forEach((series) => {
+    const house = series.house || "Unknown House";
+    const event = series.type || series.event || "Unknown Event";
+
+    houseCounts[house] = (houseCounts[house] || 0) + 1;
+    eventCounts[event] = (eventCounts[event] || 0) + 1;
+  });
+
+  const topFromCounts = (counts) => {
+    const entries = Object.entries(counts);
+    if (!entries.length) return "None yet";
+    return entries.sort((a, b) => b[1] - a[1])[0][0];
+  };
+
+  return {
+    gamesThisYear,
+    mostBowledHouse: topFromCounts(houseCounts),
+    mostCommonEvent: topFromCounts(eventCounts),
+  };
+}, [filteredSeries]);
+
 const pageTitleStyle = {
   fontSize: isPhone ? 34 : 52,
   fontWeight: 900,
@@ -1227,17 +1258,32 @@ if (activeView === "performance") {
             Receipts
           </button>
 
-          <button
-            type="button"
-            onClick={() => signOut(auth)}
-            style={{
-              ...buttonStyle,
-              background: "rgba(255,255,255,0.12)",
-              color: appStyles.text,
-            }}
-          >
-            Log Out
-          </button>
+<button
+  type="button"
+  onClick={() => setShowHouseAverages((prev) => !prev)}
+  style={{
+    ...buttonStyle,
+    background: showHouseAverages
+      ? appStyles.accent2
+      : "rgba(255,255,255,0.12)",
+    color: showHouseAverages ? "#06203a" : appStyles.text,
+  }}
+>
+  {showHouseAverages ? "Hide House Avg" : "Show House Avg"}
+</button>
+
+<button
+  type="button"
+  onClick={() => signOut(auth)}
+  style={{
+    ...buttonStyle,
+    background: "rgba(255,255,255,0.12)",
+    color: appStyles.text,
+  }}
+>
+  Log Out
+</button>
+          
         </div>
       </div>
 
@@ -1503,6 +1549,20 @@ gridTemplateColumns: isPhone
             </div>
           </div>
 
+{showHouseAverages ? (
+
+<div
+  style={{
+    background: "rgba(255,255,255,0.05)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 18,
+    padding: 18,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+  }}
+>
+
 <div
   style={{
     background: "rgba(255,255,255,0.05)",
@@ -1515,14 +1575,67 @@ gridTemplateColumns: isPhone
   }}
 >
   <SectionTitle
+    title="Quick Performance Stats"
+    subtitle="Snapshot from current filters"
+  />
+
+  <div style={{ display: "grid", gap: 10 }}>
+    <div
+      style={{
+        background: "rgba(255,255,255,0.04)",
+        border: `1px solid ${appStyles.cardBorder}`,
+        borderRadius: 14,
+        padding: 12,
+      }}
+    >
+      <div style={{ color: appStyles.muted, fontSize: 14 }}>Games This Year</div>
+      <div style={{ fontSize: 24, fontWeight: 900 }}>
+        {miniPerformanceStats.gamesThisYear}
+      </div>
+    </div>
+
+    <div
+      style={{
+        background: "rgba(255,255,255,0.04)",
+        border: `1px solid ${appStyles.cardBorder}`,
+        borderRadius: 14,
+        padding: 12,
+      }}
+    >
+      <div style={{ color: appStyles.muted, fontSize: 14 }}>Most Bowled House</div>
+      <div style={{ fontSize: 20, fontWeight: 900 }}>
+        {miniPerformanceStats.mostBowledHouse}
+      </div>
+    </div>
+
+    <div
+      style={{
+        background: "rgba(255,255,255,0.04)",
+        border: `1px solid ${appStyles.cardBorder}`,
+        borderRadius: 14,
+        padding: 12,
+      }}
+    >
+      <div style={{ color: appStyles.muted, fontSize: 14 }}>Most Common Event</div>
+      <div style={{ fontSize: 20, fontWeight: 900 }}>
+        {miniPerformanceStats.mostCommonEvent}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style={{ marginTop: 24 }}>
+  <SectionTitle
     title="House Averages"
     subtitle="Average score by bowling center based on current filters"
   />
+</div>
 
   {houseAverages.length === 0 ? (
     <div style={{ color: appStyles.muted, textAlign: "center" }}>
       No house averages yet.
     </div>
+
   ) : (
     <div style={{ display: "grid", gap: 10 }}>
       {houseAverages.map((item) => (
@@ -1554,6 +1667,7 @@ gridTemplateColumns: isPhone
     </div>
   )}
 </div>
+) : null}
 
           <div
             style={{
@@ -2045,17 +2159,19 @@ return (
           subtitle="Add income, expenses, receipts, and imports without hunting through menus."
         />
 
-        <div
+<div
   style={{
     display: "grid",
-gridTemplateColumns:
-  screenWidth < 1200
-    ? "1fr"
-    : "repeat(3, minmax(0, 1fr))",
-    gap: 16,
-    alignItems: "start",
+    gridTemplateColumns:
+      isPhone
+        ? "repeat(2, minmax(0,1fr))"
+        : "repeat(3, minmax(0,1fr))",
+    gap: 12,
+    alignItems: "stretch",
+    width: "100%",
   }}
->
+>        
+
           <button
             type="button"
             style={{ ...buttonStyle, background: appStyles.accent, color: "#1a1633" }}
@@ -2142,13 +2258,22 @@ gridTemplateColumns:
           />
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isPhone ? "1fr" : "repeat(5, minmax(0, 1fr))",
-            gap: 10,
-          }}
-        >
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns:
+      isPhone
+        ? "1fr"
+        : isFoldable
+        ? "repeat(2, minmax(0,1fr))"
+        : "repeat(5, minmax(0,1fr))",
+    gap: 12,
+    width: "100%",
+    alignItems: "stretch",
+    marginTop: 12,
+  }}
+>        
+
           <select
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}

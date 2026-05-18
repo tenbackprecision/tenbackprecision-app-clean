@@ -1248,7 +1248,7 @@ gridTemplateColumns: isPhone
   ? "1fr"
   : isFoldable
     ? "repeat(2, minmax(0, 1fr))"
-    : "repeat(4, minmax(0, 1fr))",
+    : "repeat(3, minmax(0, 1fr))",
           gap: 14,
           marginBottom: 18,
         }}
@@ -1844,7 +1844,8 @@ gridTemplateColumns: isPhone
                   border: `1px solid ${appStyles.cardBorder}`,
                   borderRadius: 18,
                   padding: 18,
-                  display: "flex",
+                  display: "grid",
+		  gridTemplateColumns: "80px 1fr",
                   gap: 14,
                   alignItems: "center",
                 }}
@@ -1873,6 +1874,9 @@ gridTemplateColumns: isPhone
                     ...buttonStyle,
                     background: appStyles.accent2,
                     color: "#06203a",
+		    gridColumn: "1 / -1",
+		    justifySelf: "center",
+		    marginTop: 8,
                   }}
                 >
                   View
@@ -2042,16 +2046,16 @@ return (
         />
 
         <div
-          style={{
-  display: "grid",
-  gridTemplateColumns: isPhone
+  style={{
+    display: "grid",
+gridTemplateColumns:
+  screenWidth < 1200
     ? "1fr"
-    : isFoldable
-      ? "repeat(2, minmax(0, 1fr))"
-      : "repeat(6, minmax(0, 1fr))",
-  gap: 10,
-}}
-        >
+    : "repeat(3, minmax(0, 1fr))",
+    gap: 16,
+    alignItems: "start",
+  }}
+>
           <button
             type="button"
             style={{ ...buttonStyle, background: appStyles.accent, color: "#1a1633" }}

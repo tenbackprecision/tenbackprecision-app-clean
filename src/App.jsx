@@ -1053,6 +1053,23 @@ const miniPerformanceStats = useMemo(() => {
   };
 }, [filteredSeries]);
 
+const lastUpdatedPerformance = useMemo(() => {
+  const dates = filteredSeries
+    .map((series) => series.updatedAt?.toDate?.() || series.createdAt?.toDate?.() || null)
+    .filter(Boolean)
+    .sort((a, b) => b - a);
+
+  if (!dates.length) return "No updates yet";
+
+  return dates[0].toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}, [filteredSeries]);
+
 const pageTitleStyle = {
   fontSize: isPhone ? 34 : 52,
   fontWeight: 900,
@@ -1225,6 +1242,16 @@ if (activeView === "performance") {
           Track houses, games, and series without junk-drawering the money side.
         </div>
 
+<div
+  style={{
+    color: appStyles.muted,
+    fontSize: 13,
+    marginTop: 6,
+  }}
+>
+  Last updated: {lastUpdatedPerformance}
+</div>
+
         <div
           style={{
             display: "flex",
@@ -1314,6 +1341,7 @@ gridTemplateColumns: isPhone
   label="Last 5 Avg"
   value={String(performanceSummary.last5Average)}
   subValue={performanceSummary.trend}
+  valueColor={performanceSummary.trendColor}
 />
 
 <StatCard
@@ -1640,18 +1668,48 @@ gridTemplateColumns: isPhone
     <div style={{ display: "grid", gap: 10 }}>
       {houseAverages.map((item) => (
         <div
-          key={item.house}
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 14,
-            padding: 12,
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
+  key={item.house}
+  onClick={() =>
+  setPerfFilters((prev) => ({
+    ...prev,
+    house:
+      prev.house === item.house
+        ? "All"
+        : item.house
+  }))
+}
+  style={{
+  cursor: "pointer",
+  background:
+    perfFilters.house === item.house
+      ? "rgba(74,222,222,0.15)"
+      : "rgba(255,255,255,0.04)",
+
+  border:
+    perfFilters.house === item.house
+      ? "2px solid #4ADEDE"
+      : `1px solid ${appStyles.cardBorder}`,
+
+  boxShadow:
+    perfFilters.house === item.house
+      ? "0 0 18px rgba(74,222,222,.6)"
+      : "none",
+
+  transform:
+    perfFilters.house === item.house
+      ? "scale(1.02)"
+      : "scale(1)",
+
+  transition: "all .25s ease",
+
+  borderRadius: 14,
+  padding: 12,
+  display: "flex",
+  justifyContent: "space-between",
+  gap: 10,
+  flexWrap: "wrap",
+}}
+>
           <div>
             <div style={{ fontWeight: 900 }}>{item.house}</div>
             <div style={{ color: appStyles.muted, fontSize: 14 }}>

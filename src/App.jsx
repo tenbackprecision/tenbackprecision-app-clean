@@ -1607,7 +1607,13 @@ gridTemplateColumns: isPhone
     subtitle="Snapshot from current filters"
   />
 
-  <div style={{ display: "grid", gap: 10 }}>
+<div
+  style={{
+    display: "grid",
+    gap: 14,
+    marginTop: 14,
+  }}
+>
     <div
       style={{
         background: "rgba(255,255,255,0.04)",
@@ -1622,19 +1628,19 @@ gridTemplateColumns: isPhone
       </div>
     </div>
 
-    <div
-      style={{
-        background: "rgba(255,255,255,0.04)",
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 14,
-        padding: 12,
-      }}
-    >
-      <div style={{ color: appStyles.muted, fontSize: 14 }}>Most Bowled House</div>
-      <div style={{ fontSize: 20, fontWeight: 900 }}>
-        {miniPerformanceStats.mostBowledHouse}
-      </div>
-    </div>
+<div
+  style={{
+    background: "rgba(255,255,255,0.04)",
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 14,
+    padding: 12,
+  }}
+>
+  <div style={{ color: appStyles.muted, fontSize: 14 }}>Top House</div>
+  <div style={{ fontSize: 20, fontWeight: 900 }}>
+    {miniPerformanceStats.mostBowledHouse}
+  </div>
+</div>
 
     <div
       style={{
@@ -1657,6 +1663,27 @@ gridTemplateColumns: isPhone
     title="House Averages"
     subtitle="Average score by bowling center based on current filters"
   />
+
+{perfFilters.house !== "All" && (
+  <button
+    type="button"
+    onClick={() =>
+      setPerfFilters((prev) => ({
+        ...prev,
+        house: "All",
+      }))
+    }
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.12)",
+      color: appStyles.text,
+      marginTop: 10,
+    }}
+  >
+    Clear House Filter
+  </button>
+)}
+
 </div>
 
   {houseAverages.length === 0 ? (

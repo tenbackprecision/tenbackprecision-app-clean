@@ -45,7 +45,7 @@ const incomeSources = [
   "Other",
 ];
 
-const performanceTypes = ["Practice", "League", "Tournament"];
+const performanceTypes = ["Practice", "League", "Tournament", "9 Pin"];
 
 const appStyles = {
   background: "linear-gradient(135deg, #0b0f2f, #0d1b4c, #001f3f, #ff6a00)",
@@ -1417,9 +1417,9 @@ gridTemplateColumns: isPhone
     style={inputStyle}
   >
     <option value="All">All Events</option>
-    {[...new Set(seriesList.map((s) => s.type || s.event))]
-      .filter(Boolean)
-      .map((event) => (
+    {[...new Set([...performanceTypes, ...seriesList.map((s) => s.type || s.event)])]
+  .filter(Boolean)
+  .map((event) => (
         <option key={event} value={event}>
           {event}
         </option>

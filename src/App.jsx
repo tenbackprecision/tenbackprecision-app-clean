@@ -22,7 +22,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1114";
+const APP_VERSION = "v1115";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [

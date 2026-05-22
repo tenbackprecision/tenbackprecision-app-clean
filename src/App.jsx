@@ -278,6 +278,7 @@ export default function App() {
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
   const [editingSeriesId, setEditingSeriesId] = useState(null);
+  const addSeriesRef = useRef(null);
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState([]);
   const [seriesList, setSeriesList] = useState([]);
@@ -1242,15 +1243,15 @@ if (activeView === "performance") {
           Track houses, games, and series without junk-drawering the money side.
         </div>
 
-<div
-  style={{
-    color: appStyles.muted,
-    fontSize: 13,
-    marginTop: 6,
-  }}
->
-  Last updated: {lastUpdatedPerformance}
-</div>
+        <div
+          style={{
+            color: appStyles.muted,
+            fontSize: 13,
+            marginTop: 6,
+          }}
+        >
+          Last updated: {lastUpdatedPerformance}
+        </div>
 
         <div
           style={{
@@ -1264,11 +1265,7 @@ if (activeView === "performance") {
           <button
             type="button"
             onClick={() => setActiveView("dashboard")}
-            style={{
-              ...buttonStyle,
-              background: appStyles.accent,
-              color: "#1a1633",
-            }}
+            style={{ ...buttonStyle, background: appStyles.accent, color: "#1a1633" }}
           >
             Dashboard
           </button>
@@ -1285,166 +1282,156 @@ if (activeView === "performance") {
             Receipts
           </button>
 
-<button
-  type="button"
-  onClick={() => setShowHouseAverages((prev) => !prev)}
-  style={{
-    ...buttonStyle,
-    background: showHouseAverages
-      ? appStyles.accent2
-      : "rgba(255,255,255,0.12)",
-    color: showHouseAverages ? "#06203a" : appStyles.text,
-  }}
->
-  {showHouseAverages ? "Hide House Avg" : "Show House Avg"}
-</button>
+          <button
+            type="button"
+            onClick={() => setShowHouseAverages((prev) => !prev)}
+            style={{
+              ...buttonStyle,
+              background: showHouseAverages ? appStyles.accent2 : "rgba(255,255,255,0.12)",
+              color: showHouseAverages ? "#06203a" : appStyles.text,
+            }}
+          >
+            {showHouseAverages ? "Hide House Avg" : "Show House Avg"}
+          </button>
 
-<button
-  type="button"
-  onClick={() => signOut(auth)}
-  style={{
-    ...buttonStyle,
-    background: "rgba(255,255,255,0.12)",
-    color: appStyles.text,
-  }}
->
-  Log Out
-</button>
-          
+          <button
+            type="button"
+            onClick={() => signOut(auth)}
+            style={{
+              ...buttonStyle,
+              background: "rgba(255,255,255,0.12)",
+              color: appStyles.text,
+            }}
+          >
+            Log Out
+          </button>
         </div>
       </div>
 
       <div
         style={{
           display: "grid",
-gridTemplateColumns: isPhone
-  ? "1fr"
-  : isFoldable
-    ? "repeat(2, minmax(0, 1fr))"
-    : "repeat(3, minmax(0, 1fr))",
+          gridTemplateColumns: isPhone
+            ? "1fr"
+            : isFoldable
+              ? "repeat(2, minmax(0, 1fr))"
+              : "repeat(3, minmax(0, 1fr))",
           gap: 14,
           marginBottom: 18,
         }}
       >
+        <StatCard
+          label="Series Logged"
+          value={String(performanceSummary.totalSeries)}
+          subValue="Tracked and ready"
+        />
+        <StatCard
+          label="Overall Avg"
+          value={String(performanceSummary.overallAverage)}
+          subValue="Across all saved games"
+        />
+        <StatCard
+          label="Last 5 Avg"
+          value={String(performanceSummary.last5Average)}
+          subValue={performanceSummary.trend}
+          valueColor={performanceSummary.trendColor}
+        />
+        <StatCard
+          label="Last 10 Avg"
+          value={String(performanceSummary.last10Average)}
+          subValue="Recent performance window"
+        />
+        <StatCard
+          label="Best Series"
+          value={String(performanceSummary.bestSeries)}
+          subValue="Highest total"
+        />
+        <StatCard
+          label="Best Game"
+          value={String(performanceSummary.bestGame)}
+          subValue="High score"
+        />
+      </div>
 
-          <StatCard
-            label="Series Logged"
-            value={String(performanceSummary.totalSeries)}
-            subValue="Tracked and ready"
-          />
-          <StatCard
-            label="Overall Avg"
-            value={String(performanceSummary.overallAverage)}
-            subValue="Across all saved games"
-          />
-<StatCard
-  label="Last 5 Avg"
-  value={String(performanceSummary.last5Average)}
-  subValue={performanceSummary.trend}
-  valueColor={performanceSummary.trendColor}
-/>
-
-<StatCard
-  label="Last 10 Avg"
-  value={String(performanceSummary.last10Average)}
-  subValue="Recent performance window"
-/>
-          <StatCard
-            label="Best Series"
-            value={String(performanceSummary.bestSeries)}
-            subValue="Highest total"
-          />
-          <StatCard
-            label="Best Game"
-            value={String(performanceSummary.bestGame)}
-            subValue="High score"
-          />
-        </div>
-
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isPhone
+            ? "1fr"
+            : isFoldable
+              ? "repeat(2, minmax(0, 1fr))"
+              : showHouseAverages
+                ? "repeat(4, minmax(0, 1fr))"
+                : "repeat(2, minmax(0, 1fr))",
+          gap: 18,
+        }}
+      >
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: isPhone
-  ? "1fr"
-  : isFoldable
-    ? "repeat(2, minmax(0, 1fr))"
-    : "repeat(4, minmax(0, 1fr))",
-            gap: 18,
+            background: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            border: `1px solid ${appStyles.cardBorder}`,
+            borderRadius: 18,
+            padding: 18,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
           }}
         >
           <div
             style={{
-              background: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              border: `1px solid ${appStyles.cardBorder}`,
-              borderRadius: 18,
-              padding: 18,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+              display: "grid",
+              gridTemplateColumns: isPhone ? "1fr" : "repeat(3, 1fr)",
+              gap: 12,
+              marginBottom: 12,
             }}
           >
+            <select
+              value={perfFilters.house}
+              onChange={(e) => setPerfFilters({ ...perfFilters, house: e.target.value })}
+              style={inputStyle}
+            >
+              <option value="All">All Houses</option>
+              {[...new Set(seriesList.map((s) => s.house))]
+                .filter(Boolean)
+                .map((house) => (
+                  <option key={house} value={house}>
+                    {house}
+                  </option>
+                ))}
+            </select>
 
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 12,
-    marginBottom: 12,
-  }}
->
-  <select
-    value={perfFilters.house}
-    onChange={(e) =>
-      setPerfFilters({ ...perfFilters, house: e.target.value })
-    }
-    style={inputStyle}
-  >
-    <option value="All">All Houses</option>
-    {[...new Set(seriesList.map((s) => s.house))]
-      .filter(Boolean)
-      .map((house) => (
-        <option key={house} value={house}>
-          {house}
-        </option>
-      ))}
-  </select>
+            <select
+              value={perfFilters.event}
+              onChange={(e) => setPerfFilters({ ...perfFilters, event: e.target.value })}
+              style={inputStyle}
+            >
+              <option value="All">All Events</option>
+              {[...new Set([...performanceTypes, ...seriesList.map((s) => s.type || s.event)])]
+                .filter(Boolean)
+                .map((event) => (
+                  <option key={event} value={event}>
+                    {event}
+                  </option>
+                ))}
+            </select>
 
-  <select
-    value={perfFilters.event}
-    onChange={(e) =>
-      setPerfFilters({ ...perfFilters, event: e.target.value })
-    }
-    style={inputStyle}
-  >
-    <option value="All">All Events</option>
-    {[...new Set([...performanceTypes, ...seriesList.map((s) => s.type || s.event)])]
-  .filter(Boolean)
-  .map((event) => (
-        <option key={event} value={event}>
-          {event}
-        </option>
-      ))}
-  </select>
+            <select
+              value={perfFilters.year}
+              onChange={(e) => setPerfFilters({ ...perfFilters, year: e.target.value })}
+              style={inputStyle}
+            >
+              <option value="All">All Years</option>
+              {[...new Set(seriesList.map((s) => new Date(s.date).getFullYear().toString()))]
+                .sort((a, b) => b.localeCompare(a))
+                .map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+            </select>
+          </div>
 
-  <select
-    value={perfFilters.year}
-    onChange={(e) =>
-      setPerfFilters({ ...perfFilters, year: e.target.value })
-    }
-    style={inputStyle}
-  >
-    <option value="All">All Years</option>
-    {[...new Set(seriesList.map((s) =>
-      new Date(s.date).getFullYear().toString()
-    ))]
-      .sort((a, b) => b.localeCompare(a))
-      .map((year) => (
-        <option key={year} value={year}>
-          {year}
-        </option>
-      ))}
-  </select>
-</div>
+          <div ref={addSeriesRef}>
             <SectionTitle
               title="Add Series"
               subtitle="House, event type, games, and notes"
@@ -1454,19 +1441,17 @@ gridTemplateColumns: isPhone
               style={{
                 display: "grid",
                 gridTemplateColumns: isPhone
-  ? "1fr"
-  : isFoldable
-    ? "repeat(2, minmax(0, 1fr))"
-    : "repeat(4, minmax(0, 1fr))",
+                  ? "1fr"
+                  : isFoldable
+                    ? "repeat(2, minmax(0, 1fr))"
+                    : "repeat(4, minmax(0, 1fr))",
                 gap: 12,
               }}
             >
               <input
                 type="date"
                 value={newSeries.date}
-                onChange={(e) =>
-                  setNewSeries((prev) => ({ ...prev, date: e.target.value }))
-                }
+                onChange={(e) => setNewSeries((prev) => ({ ...prev, date: e.target.value }))}
                 style={inputStyle}
               />
 
@@ -1474,17 +1459,13 @@ gridTemplateColumns: isPhone
                 type="text"
                 placeholder="House"
                 value={newSeries.house}
-                onChange={(e) =>
-                  setNewSeries((prev) => ({ ...prev, house: e.target.value }))
-                }
+                onChange={(e) => setNewSeries((prev) => ({ ...prev, house: e.target.value }))}
                 style={inputStyle}
               />
 
               <select
                 value={newSeries.type}
-                onChange={(e) =>
-                  setNewSeries((prev) => ({ ...prev, type: e.target.value }))
-                }
+                onChange={(e) => setNewSeries((prev) => ({ ...prev, type: e.target.value }))}
                 style={inputStyle}
               >
                 {performanceTypes.map((type) => (
@@ -1494,47 +1475,39 @@ gridTemplateColumns: isPhone
 
               <div />
 
-              {["game1", "game2", "game3", "game4", "game5", "game6"].map(
-                (field, index) => (
-                  <input
-                    key={field}
-                    type="number"
-                    placeholder={`Game ${index + 1}`}
-                    value={newSeries[field]}
-                    onChange={(e) =>
-                      setNewSeries((prev) => ({
-                        ...prev,
-                        [field]: e.target.value,
-                      }))
-                    }
-                    style={inputStyle}
-                  />
-                )
-              )}
+              {["game1", "game2", "game3", "game4", "game5", "game6"].map((field, index) => (
+                <input
+                  key={field}
+                  type="number"
+                  placeholder={`Game ${index + 1}`}
+                  value={newSeries[field]}
+                  onChange={(e) =>
+                    setNewSeries((prev) => ({
+                      ...prev,
+                      [field]: e.target.value,
+                    }))
+                  }
+                  style={inputStyle}
+                />
+              ))}
 
               <textarea
                 placeholder="Notes"
                 rows={4}
                 value={newSeries.notes}
-                onChange={(e) =>
-                  setNewSeries((prev) => ({ ...prev, notes: e.target.value }))
-                }
-                style={{
-                  ...inputStyle,
-                  gridColumn: "1 / -1",
-                  resize: "vertical",
-                }}
+                onChange={(e) => setNewSeries((prev) => ({ ...prev, notes: e.target.value }))}
+                style={{ ...inputStyle, gridColumn: "1 / -1", resize: "vertical" }}
               />
 
               <div
-  		style={{
-    		   gridColumn: "1 / -1",
-    		   display: "flex",
-    		   justifyContent: "center",
-    		   gap: 12,
-    		   flexWrap: "wrap",
-  		}}
-	      >
+                style={{
+                  gridColumn: "1 / -1",
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
                 <button
                   type="button"
                   onClick={saveSeries}
@@ -1547,20 +1520,22 @@ gridTemplateColumns: isPhone
                   {editingSeriesId ? "Update Series" : "Save Series"}
                 </button>
 
-{editingSeriesId ? (
-  <button
-    onClick={() => {
-      setEditingSeriesId(null);
-      resetSeriesForm();
-    }}
-    style={{
-      ...buttonStyle,
-      background: "rgba(255,255,255,0.18)",
-    }}
-  >
-    Cancel Edit
-  </button>
-) : null}
+                {editingSeriesId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingSeriesId(null);
+                      resetSeriesForm();
+                    }}
+                    style={{
+                      ...buttonStyle,
+                      background: "rgba(255,255,255,0.18)",
+                      color: appStyles.text,
+                    }}
+                  >
+                    Cancel Edit
+                  </button>
+                ) : null}
 
                 <button
                   type="button"
@@ -1576,184 +1551,9 @@ gridTemplateColumns: isPhone
               </div>
             </div>
           </div>
-
-{showHouseAverages ? (
-
-<div
-  style={{
-    background: "rgba(255,255,255,0.05)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 18,
-    padding: 18,
-    boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-  }}
->
-
-<div
-  style={{
-    background: "rgba(255,255,255,0.05)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 18,
-    padding: 18,
-    boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-  }}
->
-  <SectionTitle
-    title="Quick Performance Stats"
-    subtitle="Snapshot from current filters"
-  />
-
-<div
-  style={{
-    display: "grid",
-    gap: 14,
-    marginTop: 14,
-  }}
->
-    <div
-      style={{
-        background: "rgba(255,255,255,0.04)",
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 14,
-        padding: 12,
-      }}
-    >
-      <div style={{ color: appStyles.muted, fontSize: 14 }}>Games This Year</div>
-      <div style={{ fontSize: 24, fontWeight: 900 }}>
-        {miniPerformanceStats.gamesThisYear}
-      </div>
-    </div>
-
-<div
-  style={{
-    background: "rgba(255,255,255,0.04)",
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 14,
-    padding: 12,
-  }}
->
-  <div style={{ color: appStyles.muted, fontSize: 14 }}>Top House</div>
-  <div style={{ fontSize: 20, fontWeight: 900 }}>
-    {miniPerformanceStats.mostBowledHouse}
-  </div>
-</div>
-
-    <div
-      style={{
-        background: "rgba(255,255,255,0.04)",
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 14,
-        padding: 12,
-      }}
-    >
-      <div style={{ color: appStyles.muted, fontSize: 14 }}>Most Common Event</div>
-      <div style={{ fontSize: 20, fontWeight: 900 }}>
-        {miniPerformanceStats.mostCommonEvent}
-      </div>
-    </div>
-  </div>
-</div>
-
-<div style={{ marginTop: 24 }}>
-  <SectionTitle
-    title="House Averages"
-    subtitle="Average score by bowling center based on current filters"
-  />
-
-{perfFilters.house !== "All" && (
-  <button
-    type="button"
-    onClick={() =>
-      setPerfFilters((prev) => ({
-        ...prev,
-        house: "All",
-      }))
-    }
-    style={{
-      ...buttonStyle,
-      background: "rgba(255,255,255,0.12)",
-      color: appStyles.text,
-      marginTop: 10,
-    }}
-  >
-    Clear House Filter
-  </button>
-)}
-
-</div>
-
-  {houseAverages.length === 0 ? (
-    <div style={{ color: appStyles.muted, textAlign: "center" }}>
-      No house averages yet.
-    </div>
-
-  ) : (
-    <div style={{ display: "grid", gap: 10 }}>
-      {houseAverages.map((item) => (
-        <div
-  key={item.house}
-  onClick={() =>
-  setPerfFilters((prev) => ({
-    ...prev,
-    house:
-      prev.house === item.house
-        ? "All"
-        : item.house
-  }))
-}
-  style={{
-  cursor: "pointer",
-  background:
-    perfFilters.house === item.house
-      ? "rgba(74,222,222,0.15)"
-      : "rgba(255,255,255,0.04)",
-
-  border:
-    perfFilters.house === item.house
-      ? "2px solid #4ADEDE"
-      : `1px solid ${appStyles.cardBorder}`,
-
-  boxShadow:
-    perfFilters.house === item.house
-      ? "0 0 18px rgba(74,222,222,.6)"
-      : "none",
-
-  transform:
-    perfFilters.house === item.house
-      ? "scale(1.02)"
-      : "scale(1)",
-
-  transition: "all .25s ease",
-
-  borderRadius: 14,
-  padding: 12,
-  display: "flex",
-  justifyContent: "space-between",
-  gap: 10,
-  flexWrap: "wrap",
-}}
->
-          <div>
-            <div style={{ fontWeight: 900 }}>{item.house}</div>
-            <div style={{ color: appStyles.muted, fontSize: 14 }}>
-              {item.games} games tracked
-            </div>
-          </div>
-
-          <div style={{ fontSize: 22, fontWeight: 900 }}>
-            {item.average}
-          </div>
         </div>
-      ))}
-    </div>
-  )}
-</div>
-) : null}
 
+        {showHouseAverages ? (
           <div
             style={{
               background: "rgba(255,255,255,0.05)",
@@ -1766,133 +1566,283 @@ gridTemplateColumns: isPhone
             }}
           >
             <SectionTitle
-              title="Recent Series"
-              subtitle="Latest saved house and score data"
+              title="Quick Performance Stats"
+              subtitle="Snapshot from current filters"
             />
 
-            {sortedSeries.length === 0 ? (
+            <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: `1px solid ${appStyles.cardBorder}`,
+                  borderRadius: 14,
+                  padding: 12,
+                }}
+              >
+                <div style={{ color: appStyles.muted, fontSize: 14 }}>Games This Year</div>
+                <div style={{ fontSize: 24, fontWeight: 900 }}>
+                  {miniPerformanceStats.gamesThisYear}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: `1px solid ${appStyles.cardBorder}`,
+                  borderRadius: 14,
+                  padding: 12,
+                }}
+              >
+                <div style={{ color: appStyles.muted, fontSize: 14 }}>Top House</div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>
+                  {miniPerformanceStats.mostBowledHouse}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: `1px solid ${appStyles.cardBorder}`,
+                  borderRadius: 14,
+                  padding: 12,
+                }}
+              >
+                <div style={{ color: appStyles.muted, fontSize: 14 }}>Most Common Event</div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>
+                  {miniPerformanceStats.mostCommonEvent}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+              <SectionTitle
+                title="House Averages"
+                subtitle="Average score by bowling center based on current filters"
+              />
+
+              {perfFilters.house !== "All" ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPerfFilters((prev) => ({
+                      ...prev,
+                      house: "All",
+                    }))
+                  }
+                  style={{
+                    ...buttonStyle,
+                    background: "rgba(255,255,255,0.12)",
+                    color: appStyles.text,
+                    marginTop: 10,
+                  }}
+                >
+                  Clear House Filter
+                </button>
+              ) : null}
+            </div>
+
+            {houseAverages.length === 0 ? (
               <div style={{ color: appStyles.muted, textAlign: "center" }}>
-                No series yet.
+                No house averages yet.
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 12 }}>
-                {sortedSeries.slice(0, 30).map((series) => (
-                  
-<div
-  key={series.id}
-  style={{
-    background:
-      editingSeriesId === series.id
-        ? "rgba(255, 200, 0, 0.15)"
-        : "rgba(255,255,255,0.05)",
-    border:
-      editingSeriesId === series.id
-        ? "2px solid #ffc107"
-        : `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 14,
-    padding: 14,
-    transition: "all 0.2s ease",
-  }}
->
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 10,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <div style={{ fontWeight: 800 }}>{series.house}</div>
-                      <div style={{ color: appStyles.muted }}>{series.date}</div>
-                    </div>
-
-                    <div style={{ marginTop: 6, color: appStyles.muted }}>
-                      {series.type}
-                    </div>
-
-                    <div style={{ marginTop: 8 }}>
-                      Games: {(series.games || []).join(" / ")}
-                    </div>
-
-                    <div style={{ marginTop: 8 }}>
-                      Total: <strong>{series.total}</strong> · Avg:{" "}
-                      <strong>{series.average}</strong> · High Game:{" "}
-                      <strong>{series.highGame}</strong>
-                    </div>
-
-                    {series.notes ? (
-                      <div style={{ marginTop: 8, color: appStyles.muted }}>
-                        {series.notes}
+              <div style={{ display: "grid", gap: 10 }}>
+                {houseAverages.map((item) => (
+                  <div
+                    key={item.house}
+                    onClick={() =>
+                      setPerfFilters((prev) => ({
+                        ...prev,
+                        house: prev.house === item.house ? "All" : item.house,
+                      }))
+                    }
+                    style={{
+                      cursor: "pointer",
+                      background:
+                        perfFilters.house === item.house
+                          ? "rgba(74,222,222,0.15)"
+                          : "rgba(255,255,255,0.04)",
+                      border:
+                        perfFilters.house === item.house
+                          ? "2px solid #4ADEDE"
+                          : `1px solid ${appStyles.cardBorder}`,
+                      boxShadow:
+                        perfFilters.house === item.house
+                          ? "0 0 18px rgba(74,222,222,.6)"
+                          : "none",
+                      transform: perfFilters.house === item.house ? "scale(1.02)" : "scale(1)",
+                      transition: "all .25s ease",
+                      borderRadius: 14,
+                      padding: 12,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 900 }}>{item.house}</div>
+                      <div style={{ color: appStyles.muted, fontSize: 14 }}>
+                        {item.games} games tracked
                       </div>
-                    ) : null}
+                    </div>
 
-<div
-  style={{
-    display: "flex",
-    justifyContent: "center",
-    gap: 12,
-    marginTop: 12,
-    flexWrap: "wrap",
-  }}
->
-  <button
-    onClick={() => {
-      setEditingSeriesId(series.id);
-      setNewSeries({
-  date: series.date || todayString(),
-  house: series.house || "",
-  type: series.type || "Practice",
-  game1: series.game1 || series.games?.[0] || "",
-  game2: series.game2 || series.games?.[1] || "",
-  game3: series.game3 || series.games?.[2] || "",
-  game4: series.game4 || series.games?.[3] || "",
-  game5: series.game5 || series.games?.[4] || "",
-  game6: series.game6 || series.games?.[5] || "",
-  notes: series.notes || "",
-});
-    }}
-    style={buttonStyle}
-  >
-    Edit
-  </button>
-
-  <button
-    onClick={() => handleDelete(series.id)}
-    style={{ ...buttonStyle, background: "#ff4d4f" }}
-  >
-    Delete
-  </button>
-</div>
-
+                    <div style={{ fontSize: 22, fontWeight: 900 }}>
+                      {item.average}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
-
-        {toast ? (
-          <div
-            style={{
-              position: "fixed",
-              bottom: 18,
-              left: "50%",
-              transform: "translateX(-50%)",
-              background:
-                toast.type === "error" ? "#c62828" : "rgba(0,0,0,0.75)",
-              color: "#fff",
-              padding: "12px 18px",
-              borderRadius: 14,
-              zIndex: 50,
-              fontWeight: 700,
-            }}
-          >
-            {toast.message}
-          </div>
         ) : null}
+
+        <div
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            border: `1px solid ${appStyles.cardBorder}`,
+            borderRadius: 18,
+            padding: 18,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+          }}
+        >
+          <SectionTitle
+            title="Recent Series"
+            subtitle="Latest saved house and score data"
+          />
+
+          {sortedSeries.length === 0 ? (
+            <div style={{ color: appStyles.muted, textAlign: "center" }}>
+              No series yet.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 12 }}>
+              {sortedSeries.slice(0, 30).map((series) => (
+                <div
+                  key={series.id}
+                  style={{
+                    background:
+                      editingSeriesId === series.id
+                        ? "rgba(255, 200, 0, 0.15)"
+                        : "rgba(255,255,255,0.05)",
+                    border:
+                      editingSeriesId === series.id
+                        ? "2px solid #ffc107"
+                        : `1px solid ${appStyles.cardBorder}`,
+                    borderRadius: 14,
+                    padding: 14,
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ fontWeight: 800 }}>{series.house}</div>
+                    <div style={{ color: appStyles.muted }}>{series.date}</div>
+                  </div>
+
+                  <div style={{ marginTop: 6, color: appStyles.muted }}>
+                    {series.type}
+                  </div>
+
+                  <div style={{ marginTop: 8 }}>
+                    Games: {(series.games || []).join(" / ")}
+                  </div>
+
+                  <div style={{ marginTop: 8 }}>
+                    Total: <strong>{series.total}</strong> · Avg:{" "}
+                    <strong>{series.average}</strong> · High Game:{" "}
+                    <strong>{series.highGame}</strong>
+                  </div>
+
+                  {series.notes ? (
+                    <div style={{ marginTop: 8, color: appStyles.muted }}>
+                      {series.notes}
+                    </div>
+                  ) : null}
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "center",
+                      gap: 12,
+                      marginTop: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSeriesId(series.id);
+                        setNewSeries({
+                          date: series.date || todayString(),
+                          house: series.house || "",
+                          type: series.type || "Practice",
+                          game1: series.game1 || series.games?.[0] || "",
+                          game2: series.game2 || series.games?.[1] || "",
+                          game3: series.game3 || series.games?.[2] || "",
+                          game4: series.game4 || series.games?.[3] || "",
+                          game5: series.game5 || series.games?.[4] || "",
+                          game6: series.game6 || series.games?.[5] || "",
+                          notes: series.notes || "",
+                        });
+
+                        setTimeout(() => {
+                          addSeriesRef.current?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                        }, 100);
+                      }}
+                      style={buttonStyle}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(series.id)}
+                      style={{ ...buttonStyle, background: "#ff4d4f" }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    );
-  }
+
+      {toast ? (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 18,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background:
+              toast.type === "error" ? "#c62828" : "rgba(0,0,0,0.75)",
+            color: "#fff",
+            padding: "12px 18px",
+            borderRadius: 14,
+            zIndex: 50,
+            fontWeight: 700,
+          }}
+        >
+          {toast.message}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
   if (activeView === "receipts") {
     return (
@@ -2217,7 +2167,7 @@ return (
         <StatCard
           label="Net Profit"
           value={currency(profit)}
-          subValue={profit >= 0 ? "Looking sharp." : "Lane fees are swinging heavy."}
+          subValue={profit >= 0 ? "Looking sharp👌🏾" : "Lane fees are swinging heavy."}
           valueColor={profit >= 0 ? appStyles.success : appStyles.danger}
         />
         <StatCard

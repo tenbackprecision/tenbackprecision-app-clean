@@ -48,18 +48,34 @@ const incomeSources = [
 const performanceTypes = ["Practice", "League", "Tournament", "9 Pin"];
 
 const appStyles = {
-  background: "linear-gradient(135deg, #0b0f2f, #0d1b4c, #001f3f, #ff6a00)",
-  text: "#ffffff",
-  card: "rgba(66, 120, 255, 0.20)",
+  background:
+    "radial-gradient(circle at top left, #1e1b4b 0%, #0b1020 35%, #050816 100%)",
+
+  text: "#f8fbff",
+
+  card: "rgba(255,255,255,0.08)",
+
   cardBorder: "rgba(255,255,255,0.14)",
-  panel: "rgba(56, 106, 255, 0.24)",
-  input: "rgba(11, 24, 79, 0.85)",
-  accent: "#ff9560",
-  accent2: "#34f0ef",
-  accent3: "#7aa7ff",
-  success: "#16a34a",
-  danger: "#b91c1c",
-  muted: "#d8e3ff",
+
+  panel: "rgba(255,255,255,0.05)",
+
+  input: "rgba(15, 23, 42, 0.85)",
+
+  accent: "#38bdf8",
+
+  accent2: "#7c3aed",
+
+  success: "#22c55e",
+
+  danger: "#ff5c7a",
+
+  muted: "#a9b8d4",
+
+  glowBlue: "0 0 18px rgba(56,189,248,0.35)",
+
+  glowPurple: "0 0 18px rgba(124,58,237,0.35)",
+
+  glowOrange: "0 0 18px rgba(255,140,66,0.35)",
 };
 
 function todayString() {
@@ -215,14 +231,14 @@ function StatCard({ label, value, subValue, valueColor }) {
   return (
     <div
       style={{
-        background: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 18,
-        padding: 18,
-        boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-        textAlign: "center",
+        background: appStyles.card,
+border: `1px solid ${appStyles.cardBorder}`,
+borderRadius: 24,
+backdropFilter: "blur(18px)",
+WebkitBackdropFilter: "blur(18px)",
+boxShadow: appStyles.glowBlue,
+padding: 18,
+textAlign: "center",
       }}
     >
       <div style={{ color: appStyles.muted, fontWeight: 700, marginBottom: 10 }}>
@@ -368,14 +384,15 @@ const matchesYear =
 
 
   const buttonStyle = {
-    padding: "12px 18px",
-    borderRadius: 14,
-    border: "none",
-    cursor: "pointer",
-    fontWeight: 800,
-    fontSize: 16,
-    boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
-  };
+  padding: "12px 18px",
+  borderRadius: 16,
+  border: "1px solid rgba(255,255,255,0.12)",
+  cursor: "pointer",
+  fontWeight: 900,
+  fontSize: 16,
+  boxShadow: "0 10px 24px rgba(0,0,0,0.25)",
+  transition: "all 0.2s ease",
+};
 
   const inputStyle = {
     background: appStyles.input,
@@ -1047,10 +1064,25 @@ const miniPerformanceStats = useMemo(() => {
     return entries.sort((a, b) => b[1] - a[1])[0][0];
   };
 
+const sortedByDate = [...filteredSeries].sort((a, b) =>
+  String(b.date).localeCompare(String(a.date))
+);
+
+let currentStreak = 0;
+
+for (const series of sortedByDate) {
+  if (Number(series.average || 0) >= 180) {
+    currentStreak += 1;
+  } else {
+    break;
+  }
+}
+
   return {
     gamesThisYear,
     mostBowledHouse: topFromCounts(houseCounts),
     mostCommonEvent: topFromCounts(eventCounts),
+    currentStreak,
   };
 }, [filteredSeries]);
 
@@ -1433,9 +1465,13 @@ if (activeView === "performance") {
 
           <div ref={addSeriesRef}>
             <SectionTitle
-              title="Add Series"
-              subtitle="House, event type, games, and notes"
-            />
+  title={editingSeriesId ? "Editing Series" : "Add Series"}
+  subtitle={
+    editingSeriesId
+      ? "Update this saved series, then tap Update Series."
+      : "House, event type, games, and notes"
+  }
+/>
 
             <div
               style={{
@@ -1612,6 +1648,29 @@ if (activeView === "performance") {
                   {miniPerformanceStats.mostCommonEvent}
                 </div>
               </div>
+<div
+  style={{
+    background: "rgba(255,255,255,0.04)",
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 14,
+    padding: 12,
+  }}
+>
+  <div
+  style={{
+    fontSize: 20,
+    fontWeight: 900,
+    color:
+      miniPerformanceStats.currentStreak > 0
+        ? appStyles.accent
+        : appStyles.muted,
+  }}
+>
+  {miniPerformanceStats.currentStreak > 0
+    ? `🔥 ${miniPerformanceStats.currentStreak} series`
+    : "No streak"}
+</div>
+</div>
             </div>
 
             <div style={{ marginTop: 24 }}>
@@ -1699,14 +1758,14 @@ if (activeView === "performance") {
 
         <div
           style={{
-            background: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 18,
-            padding: 18,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-          }}
+  background: appStyles.card,
+  border: `1px solid ${appStyles.cardBorder}`,
+  borderRadius: 24,
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+  boxShadow: appStyles.glowBlue,
+  padding: 18,
+}}
         >
           <SectionTitle
             title="Recent Series"
@@ -1721,20 +1780,27 @@ if (activeView === "performance") {
             <div style={{ display: "grid", gap: 12 }}>
               {sortedSeries.slice(0, 30).map((series) => (
                 <div
-                  key={series.id}
-                  style={{
-                    background:
-                      editingSeriesId === series.id
-                        ? "rgba(255, 200, 0, 0.15)"
-                        : "rgba(255,255,255,0.05)",
-                    border:
-                      editingSeriesId === series.id
-                        ? "2px solid #ffc107"
-                        : `1px solid ${appStyles.cardBorder}`,
-                    borderRadius: 14,
-                    padding: 14,
-                    transition: "all 0.2s ease",
-                  }}
+style={{
+  background:
+    editingSeriesId === series.id
+      ? "rgba(255, 200, 0, 0.16)"
+      : appStyles.card,
+  border: `1px solid ${
+    editingSeriesId === series.id
+      ? "rgba(255,215,0,0.45)"
+      : appStyles.cardBorder
+  }`,
+  borderRadius: 24,
+  padding: 18,
+  marginBottom: 18,
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+  boxShadow:
+    editingSeriesId === series.id
+      ? "0 0 30px rgba(255,215,0,0.28)"
+      : appStyles.glowBlue,
+  transition: "all 0.22s ease",
+}}
                 >
                   <div
                     style={{
@@ -1976,12 +2042,14 @@ if (activeView === "performance") {
           {receiptItems.length === 0 ? (
             <div
               style={{
-                background: "rgba(255,255,255,0.05)",
-                border: `1px solid ${appStyles.cardBorder}`,
-                borderRadius: 18,
-                padding: 18,
-              }}
-            >
+  background: "rgba(255,255,255,0.05)",
+  backdropFilter: "blur(10px)",
+  WebkitBackdropFilter: "blur(10px)",
+  border: `1px solid ${appStyles.cardBorder}`,
+  borderRadius: 18,
+  padding: 18,
+}}
+                          >
               No receipts yet.
             </div>
           ) : (
@@ -2179,15 +2247,15 @@ return (
 
       <div
         style={{
-          background: "rgba(255,255,255,0.05)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          border: `1px solid ${appStyles.cardBorder}`,
-          borderRadius: 18,
-          padding: 18,
-          marginBottom: 18,
-          boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-        }}
+  background: appStyles.card,
+  border: `1px solid ${appStyles.cardBorder}`,
+  borderRadius: 24,
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
+  boxShadow: appStyles.glowBlue,
+  padding: 18,
+  marginBottom: 18,
+}}
       >
         <SectionTitle
           title="Quick Actions"

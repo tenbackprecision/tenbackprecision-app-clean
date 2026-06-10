@@ -22,7 +22,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1115";
+const APP_VERSION = "v1116";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -364,17 +364,12 @@ const matchesYear =
 });
 
   const [newSeries, setNewSeries] = useState({
-    date: todayString(),
-    house: "",
-    type: "Practice",
-    game1: "",
-    game2: "",
-    game3: "",
-    game4: "",
-    game5: "",
-    game6: "",
-    notes: "",
-  });
+  date: todayString(),
+  house: "",
+  type: "Practice",
+  games: ["", "", ""],
+  notes: "",
+});
 
   const importFileRef = useRef(null);
 
@@ -573,17 +568,12 @@ showToast("Receipt added.");
 
   function resetSeriesForm() {
     setNewSeries({
-      date: todayString(),
-      house: "",
-      type: "Practice",
-      game1: "",
-      game2: "",
-      game3: "",
-      game4: "",
-      game5: "",
-      game6: "",
-      notes: "",
-    });
+  date: todayString(),
+  house: "",
+  type: "Practice",
+  games: ["", "", ""],
+  notes: "",
+});
   }
 
   async function isDuplicateExpense(item) {
@@ -681,7 +671,15 @@ showToast("Receipt added.");
     }
   }
   async function saveSeries() {
-    const stats = calcSeriesStats(newSeries);
+    const games = (newSeries.games || [])
+  .map((g) => Number(g || 0))
+  .filter((g) => g > 0);
+
+const total = games.reduce((sum, g) => sum + g, 0);
+const average = games.length ? (total / games.length).toFixed(1) : "0.0";
+const highGame = games.length ? Math.max(...games) : 0;
+
+const stats = { games, total, average, highGame };
 
     if (!newSeries.house.trim()) {
       showToast("Add a house first.", "error");
@@ -698,12 +696,6 @@ showToast("Receipt added.");
       date: newSeries.date,
       house: newSeries.house.trim(),
       type: newSeries.type,
-      game1: Number(newSeries.game1 || 0),
-      game2: Number(newSeries.game2 || 0),
-      game3: Number(newSeries.game3 || 0),
-      game4: Number(newSeries.game4 || 0),
-      game5: Number(newSeries.game5 || 0),
-      game6: Number(newSeries.game6 || 0),
       notes: newSeries.notes.trim(),
       games: stats.games,
       total: stats.total,
@@ -1006,11 +998,17 @@ const performanceSummary = useMemo(() => {
     last5Average: avg(last5),
     last10Average: avg(last10),
     trend:
-      Number(avg(last5)) > Number(avg(last10))
-        ? "Trending Up 🔥"
-        : Number(avg(last5)) < Number(avg(last10))
-          ? "Trending Down 🧊"
-          : "Holding Steady 🎯",
+  Number(avg(last5)) > Number(avg(last10))
+    ? "Trending Up 🔥"
+    : Number(avg(last5)) < Number(avg(last10))
+      ? "Trending Down 🧊"
+      : "Holding Steady 🎯",
+trendColor:
+  Number(avg(last5)) > Number(avg(last10))
+    ? appStyles.success
+    : Number(avg(last5)) < Number(avg(last10))
+      ? appStyles.danger
+      : appStyles.accent,
   };
 }, [filteredSeries]);
 
@@ -1078,11 +1076,17 @@ for (const series of sortedByDate) {
   }
 }
 
+const bestHouse =
+  houseAverages.length > 0
+    ? houseAverages[0]
+    : null;
+
   return {
     gamesThisYear,
     mostBowledHouse: topFromCounts(houseCounts),
     mostCommonEvent: topFromCounts(eventCounts),
     currentStreak,
+    bestHouse,
   };
 }, [filteredSeries]);
 
@@ -1107,6 +1111,7 @@ const pageTitleStyle = {
   fontSize: isPhone ? 34 : 52,
   fontWeight: 900,
   lineHeight: 1,
+  textShadow: "0 0 28px rgba(80,180,255,0.55)",
 };
 
 const pageSubtitleStyle = {
@@ -1511,21 +1516,60 @@ if (activeView === "performance") {
 
               <div />
 
-              {["game1", "game2", "game3", "game4", "game5", "game6"].map((field, index) => (
-                <input
-                  key={field}
-                  type="number"
-                  placeholder={`Game ${index + 1}`}
-                  value={newSeries[field]}
-                  onChange={(e) =>
-                    setNewSeries((prev) => ({
-                      ...prev,
-                      [field]: e.target.value,
-                    }))
-                  }
-                  style={inputStyle}
-                />
-              ))}
+              {newSeries.games.map((game, index) => (
+  <input
+    key={index}
+    type="number"
+    placeholder={`Game ${index + 1}`}
+    value={game}
+    onChange={(e) => {
+      const updatedGames = [...newSeries.games];
+      updatedGames[index] = e.target.value;
+      setNewSeries((prev) => ({
+        ...prev,
+        games: updatedGames,
+      }));
+    }}
+    style={inputStyle}
+  />
+))}
+
+<button
+  type="button"
+  onClick={() =>
+    setNewSeries((prev) => ({
+      ...prev,
+      games: [...prev.games, ""],
+    }))
+  }
+  style={{
+    ...buttonStyle,
+    background: "rgba(255,255,255,0.12)",
+    color: appStyles.text,
+  }}
+>
+  + Add Game
+</button>
+
+<button
+  type="button"
+  onClick={() =>
+    setNewSeries((prev) => ({
+      ...prev,
+      games:
+        prev.games.length > 1
+          ? prev.games.slice(0, -1)
+          : prev.games,
+    }))
+  }
+  style={{
+    ...buttonStyle,
+    background: "rgba(255,255,255,0.12)",
+    color: appStyles.text,
+  }}
+>
+  - Remove Game
+</button>
 
               <textarea
                 placeholder="Notes"
@@ -1670,6 +1714,29 @@ if (activeView === "performance") {
     ? `🔥 ${miniPerformanceStats.currentStreak} series`
     : "No streak"}
 </div>
+</div>
+
+<div
+  style={{
+    background: "rgba(255,255,255,0.04)",
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 14,
+    padding: 12,
+  }}
+>
+  <div style={{ color: appStyles.muted, fontSize: 14 }}>
+    Best House Avg
+  </div>
+
+  <div style={{ fontSize: 20, fontWeight: 900 }}>
+    {miniPerformanceStats.bestHouse
+      ? miniPerformanceStats.bestHouse.average
+      : "--"}
+  </div>
+
+  <div style={{ color: appStyles.muted, marginTop: 4 }}>
+    {miniPerformanceStats.bestHouse?.house || "No data"}
+  </div>
 </div>
             </div>
 
@@ -1819,8 +1886,44 @@ style={{
                   </div>
 
                   <div style={{ marginTop: 8 }}>
-                    Games: {(series.games || []).join(" / ")}
-                  </div>
+  <strong>
+    Games (
+    {(series.games && series.games.length)
+      ? series.games.length
+      : [
+          series.game1,
+          series.game2,
+          series.game3,
+          series.game4,
+          series.game5,
+          series.game6,
+        ].filter(Boolean).length}
+    ):
+  </strong>
+</div>
+
+<div
+  style={{
+    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 1.5,
+    wordBreak: "break-word",
+  }}
+>
+  {(
+    series.games && series.games.length
+      ? series.games
+      : [
+          series.game1,
+          series.game2,
+          series.game3,
+          series.game4,
+          series.game5,
+          series.game6,
+        ].filter(Boolean)
+  ).join(" • ")}
+</div>
+
 
                   <div style={{ marginTop: 8 }}>
                     Total: <strong>{series.total}</strong> · Avg:{" "}
@@ -1848,17 +1951,22 @@ style={{
                       onClick={() => {
                         setEditingSeriesId(series.id);
                         setNewSeries({
-                          date: series.date || todayString(),
-                          house: series.house || "",
-                          type: series.type || "Practice",
-                          game1: series.game1 || series.games?.[0] || "",
-                          game2: series.game2 || series.games?.[1] || "",
-                          game3: series.game3 || series.games?.[2] || "",
-                          game4: series.game4 || series.games?.[3] || "",
-                          game5: series.game5 || series.games?.[4] || "",
-                          game6: series.game6 || series.games?.[5] || "",
-                          notes: series.notes || "",
-                        });
+  date: series.date || todayString(),
+  house: series.house || "",
+  type: series.type || "Practice",
+  games:
+    series.games && series.games.length
+      ? series.games.map(String)
+      : [
+          series.game1 || "",
+          series.game2 || "",
+          series.game3 || "",
+          series.game4 || "",
+          series.game5 || "",
+          series.game6 || "",
+        ].filter(Boolean).map(String),
+  notes: series.notes || "",
+});
 
                         setTimeout(() => {
                           addSeriesRef.current?.scrollIntoView({

@@ -278,6 +278,10 @@ export default function App() {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
   const [showHouseAverages, setShowHouseAverages] = useState(true);
+  const [showAllHouseAverages, setShowAllHouseAverages] = useState(false);
+  const [expandedSeriesScores, setExpandedSeriesScores] = useState({});
+  const [showAllRecentSeries, setShowAllRecentSeries] = useState(false);
+  const [expandedSeries, setExpandedSeries] = useState({});
 
   const [filterMonth, setFilterMonth] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -1514,7 +1518,6 @@ if (activeView === "performance") {
                 ))}
               </select>
 
-              <div />
 
               {newSeries.games.map((game, index) => (
   <input
@@ -1767,13 +1770,31 @@ if (activeView === "performance") {
               ) : null}
             </div>
 
+{houseAverages.length > 3 ? (
+  <button
+    type="button"
+    onClick={() => setShowAllHouseAverages((prev) => !prev)}
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.12)",
+      color: appStyles.text,
+      marginTop: 12,
+      width: "100%",
+    }}
+  >
+    {showAllHouseAverages ? "Show Top 3" : "Show All Houses"}
+  </button>
+) : null}
+
             {houseAverages.length === 0 ? (
               <div style={{ color: appStyles.muted, textAlign: "center" }}>
                 No house averages yet.
               </div>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
-                {houseAverages.map((item) => (
+                {houseAverages
+  .slice(0, showAllHouseAverages ? houseAverages.length : 3)
+  .map((item) => (
                   <div
                     key={item.house}
                     onClick={() =>
@@ -1845,9 +1866,16 @@ if (activeView === "performance") {
             </div>
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
-              {sortedSeries.slice(0, 30).map((series) => (
+              {sortedSeries
+  .slice(0, showAllRecentSeries ? sortedSeries.length : 5)
+  .map((series) => {
+  const isExpanded = expandedSeries[series.id];
+
+  return (
+
                 <div
-style={{
+  key={series.id}
+  style={{
   background:
     editingSeriesId === series.id
       ? "rgba(255, 200, 0, 0.16)"
@@ -1902,27 +1930,49 @@ style={{
   </strong>
 </div>
 
-<div
+{expandedSeriesScores[series.id] ? (
+  <div
+    style={{
+      marginTop: 4,
+      fontSize: 14,
+      lineHeight: 1.5,
+      wordBreak: "break-word",
+    }}
+  >
+    {(
+      series.games && series.games.length
+        ? series.games
+        : [
+            series.game1,
+            series.game2,
+            series.game3,
+            series.game4,
+            series.game5,
+            series.game6,
+          ].filter(Boolean)
+    ).join(" • ")}
+  </div>
+) : null}
+
+<button
+  type="button"
+  onClick={() =>
+    setExpandedSeriesScores((prev) => ({
+      ...prev,
+      [series.id]: !prev[series.id],
+    }))
+  }
   style={{
-    marginTop: 4,
-    fontSize: 14,
-    lineHeight: 1.5,
-    wordBreak: "break-word",
+    ...buttonStyle,
+    background: "rgba(255,255,255,0.10)",
+    color: appStyles.text,
+    marginTop: 8,
+    padding: "8px 12px",
+    fontSize: 13,
   }}
 >
-  {(
-    series.games && series.games.length
-      ? series.games
-      : [
-          series.game1,
-          series.game2,
-          series.game3,
-          series.game4,
-          series.game5,
-          series.game6,
-        ].filter(Boolean)
-  ).join(" • ")}
-</div>
+  {expandedSeriesScores[series.id] ? "Hide Scores" : "Show Scores"}
+</button>
 
 
                   <div style={{ marginTop: 8 }}>
@@ -1930,6 +1980,23 @@ style={{
                     <strong>{series.average}</strong> · High Game:{" "}
                     <strong>{series.highGame}</strong>
                   </div>
+
+<button
+  type="button"
+  onClick={() =>
+    setExpandedSeries((prev) => ({
+      ...prev,
+      [series.id]: !prev[series.id],
+    }))
+  }
+  style={{
+    ...buttonStyle,
+    width: "100%",
+    marginTop: 10,
+  }}
+>
+  {isExpanded ? "Hide Details" : "View Details"}
+</button>
 
                   {series.notes ? (
                     <div style={{ marginTop: 8, color: appStyles.muted }}>
@@ -1989,7 +2056,28 @@ style={{
                     </button>
                   </div>
                 </div>
-              ))}
+			      );
+                            })}
+
+              {sortedSeries.length > 5 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowAllRecentSeries((prev) => !prev)
+                  }
+                  style={{
+                    ...buttonStyle,
+                    background: "rgba(255,255,255,0.12)",
+                    color: appStyles.text,
+                    marginTop: 12,
+                    width: "100%",
+                  }}
+                >
+                  {showAllRecentSeries
+                    ? "Show Most Recent 5"
+                    : "Show All Series"}
+                </button>
+              ) : null}
             </div>
           )}
         </div>

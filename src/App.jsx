@@ -282,6 +282,8 @@ export default function App() {
   const [expandedSeriesScores, setExpandedSeriesScores] = useState({});
   const [showAllRecentSeries, setShowAllRecentSeries] = useState(false);
   const [expandedSeries, setExpandedSeries] = useState({});
+const [showAllRecentActivity, setShowAllRecentActivity] = useState(false);
+const [showAllExpenses, setShowAllExpenses] = useState(false);
 
   const [filterMonth, setFilterMonth] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
@@ -1867,7 +1869,7 @@ if (activeView === "performance") {
           ) : (
             <div style={{ display: "grid", gap: 12 }}>
               {sortedSeries
-  .slice(0, showAllRecentSeries ? sortedSeries.length : 5)
+  .slice(0, showAllRecentSeries ? sortedSeries.length : 3)
   .map((series) => {
   const isExpanded = expandedSeries[series.id];
 
@@ -2059,7 +2061,7 @@ if (activeView === "performance") {
 			      );
                             })}
 
-              {sortedSeries.length > 5 ? (
+              {sortedSeries.length > 3 ? (
                 <button
                   type="button"
                   onClick={() =>
@@ -2074,7 +2076,7 @@ if (activeView === "performance") {
                   }}
                 >
                   {showAllRecentSeries
-                    ? "Show Most Recent 5"
+                    ? "Show Most Recent 3"
                     : "Show All Series"}
                 </button>
               ) : null}
@@ -2849,7 +2851,9 @@ return (
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {activityItems.map((item) => (
+{activityItems
+  .slice(0, showAllRecentActivity ? activityItems.length : 3)
+  .map((item) => (
                 <div
                   key={`${item.type}-${item.id}`}
                   style={{
@@ -2885,6 +2889,21 @@ return (
                   </div>
                 </div>
               ))}
+{activityItems.length > 3 ? (
+  <button
+    type="button"
+    onClick={() => setShowAllRecentActivity((prev) => !prev)}
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.12)",
+      color: appStyles.text,
+      marginTop: 12,
+      width: "100%",
+    }}
+  >
+    {showAllRecentActivity ? "Show Most Recent 3" : "Show All Activity"}
+  </button>
+) : null}
             </div>
           )}
         </div>
@@ -2986,89 +3005,109 @@ return (
             subtitle="Edit or delete while hunting through fewer menus."
           />
 
-          {filteredExpenses.length === 0 ? (
-            <div style={{ color: appStyles.muted, textAlign: "center" }}>
-              No expenses found.
+{filteredExpenses.length === 0 ? (
+  <div style={{ color: appStyles.muted, textAlign: "center" }}>
+    No expenses found.
+  </div>
+) : (
+  <div style={{ display: "grid", gap: 10 }}>
+    {filteredExpenses
+      .slice(0, showAllExpenses ? filteredExpenses.length : 3)
+      .map((item) => (
+        <div
+          key={item.id}
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: `1px solid ${appStyles.cardBorder}`,
+            borderRadius: 14,
+            padding: 12,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 800 }}>{item.category}</div>
+              <div style={{ color: appStyles.muted, fontSize: 14 }}>
+                {item.date}
+              </div>
             </div>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {filteredExpenses.slice(0, 20).map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: `1px solid ${appStyles.cardBorder}`,
-                    borderRadius: 14,
-                    padding: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 800 }}>{item.category}</div>
-                      <div style={{ color: appStyles.muted, fontSize: 14 }}>
-                        {item.date}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 900 }}>{currency(item.amount)}</div>
-                  </div>
+            <div style={{ fontWeight: 900 }}>{currency(item.amount)}</div>
+          </div>
 
-                  {item.note ? <div style={{ marginTop: 8 }}>{item.note}</div> : null}
+          {item.note ? <div style={{ marginTop: 8 }}>{item.note}</div> : null}
 
-<div
-  style={{
-    display: "flex",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 10,
-    flexWrap: "wrap",
-  }}
->
-                    <button
-                      onClick={() => {
-                        setEditingExpenseId(item.id);
-                        setExpenseForm({
-                          date: item.date || todayString(),
-                          category: item.category || "Tournament",
-                          amount: String(item.amount || ""),
-                          note: item.note || "",
-                          receipt: item.receipt || "",
-                        });
-                        document.getElementById("expense-form")?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                      style={{
-                        ...buttonStyle,
-                        background: appStyles.accent,
-                        color: "#1a1633",
-                        padding: "8px 12px",
-                      }}
-                    >
-                      Edit
-                    </button>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 10,
+              marginTop: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <button
+              onClick={() => {
+                setEditingExpenseId(item.id);
+                setExpenseForm({
+                  date: item.date || todayString(),
+                  category: item.category || "Tournament",
+                  amount: String(item.amount || ""),
+                  note: item.note || "",
+                  receipt: item.receipt || "",
+                });
+                document
+                  .getElementById("expense-form")
+                  ?.scrollIntoView({ behavior: "smooth" });
+              }}
+              style={{
+                ...buttonStyle,
+                background: appStyles.accent,
+                color: "#1a1633",
+                padding: "8px 12px",
+              }}
+            >
+              Edit
+            </button>
 
-                    <button
-                      onClick={() => removeExpense(item)}
-                      style={{
-                        ...buttonStyle,
-                        background: "#ff6b6b",
-                        color: "#fff",
-                        padding: "8px 12px",
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+            <button
+              onClick={() => removeExpense(item)}
+              style={{
+                ...buttonStyle,
+                background: "#ff6b6b",
+                color: "#fff",
+                padding: "8px 12px",
+              }}
+            >
+              Delete
+            </button>
+          </div>
         </div>
+      ))}
+
+    {filteredExpenses.length > 3 ? (
+      <button
+        type="button"
+        onClick={() => setShowAllExpenses((prev) => !prev)}
+        style={{
+          ...buttonStyle,
+          background: "rgba(255,255,255,0.12)",
+          color: appStyles.text,
+          marginTop: 12,
+          width: "100%",
+        }}
+      >
+        {showAllExpenses ? "Show Most Recent 3" : "Show All Expenses"}
+      </button>
+    ) : null}
+  </div>
+)}
+</div>
 
         <div
           style={{

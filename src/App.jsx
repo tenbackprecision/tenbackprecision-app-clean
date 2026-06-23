@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  BarChart,
+  Bar,
+} from "recharts";
 import * as XLSX from "xlsx";
 import {
   createUserWithEmailAndPassword,
@@ -22,7 +34,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1117";
+const APP_VERSION = "v1118";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -284,7 +296,11 @@ export default function App() {
   const [expandedSeries, setExpandedSeries] = useState({});
 const [showAllRecentActivity, setShowAllRecentActivity] = useState(false);
 const [showAllExpenses, setShowAllExpenses] = useState(false);
+const [showAllIncome, setShowAllIncome] = useState(false);
+const [showAllReceipts, setShowAllReceipts] = useState(false);
 
+
+const [chartRange, setChartRange] = useState("12m");
   const [filterMonth, setFilterMonth] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterYear, setFilterYear] = useState(String(new Date().getFullYear()));
@@ -928,6 +944,53 @@ const matchesYear = filterYear === "all" || itemYear === filterYear;
     [filteredIncome]
   );
   const profit = totalIncome - totalExpenses;
+const monthlyFinancialData = useMemo(() => {
+
+  const months = {};
+
+  expenses.forEach((e) => {
+    const month = new Date(e.date).toLocaleDateString("en-US", {
+      month: "short",
+      year: "2-digit",
+    });
+
+    if (!months[month]) {
+      months[month] = {
+        month,
+        expenses: 0,
+        income: 0,
+      };
+    }
+
+    months[month].expenses += Number(e.amount || 0);
+  });
+
+  income.forEach((i) => {
+    const month = new Date(i.date).toLocaleDateString("en-US", {
+      month: "short",
+      year: "2-digit",
+    });
+
+    if (!months[month]) {
+      months[month] = {
+        month,
+        expenses: 0,
+        income: 0,
+      };
+    }
+
+    months[month].income += Number(i.amount || 0);
+  });
+
+  return Object.values(months);
+}, [expenses, income]);
+
+const profitTrendData = useMemo(() => {
+  return monthlyFinancialData.map((m) => ({
+    month: m.month,
+    profit: (m.income || 0) - (m.expenses || 0),
+  }));
+}, [monthlyFinancialData]);
 
   const activityItems = useMemo(() => {
     const list = [
@@ -953,6 +1016,29 @@ const matchesYear = filterYear === "all" || itemYear === filterYear;
       .sort((a, b) => String(b.date).localeCompare(String(a.date)))
       .slice(0, 8);
   }, [filteredExpenses, filteredIncome]);
+
+const displayedFinancialData = useMemo(() => {
+  switch (chartRange) {
+    case "3m":
+      return monthlyFinancialData.slice(-3);
+
+    case "6m":
+      return monthlyFinancialData.slice(-6);
+
+    case "12m":
+      return monthlyFinancialData.slice(-12);
+
+    default:
+      return monthlyFinancialData;
+  }
+}, [monthlyFinancialData, chartRange]);
+
+const displayedProfitData = useMemo(() => {
+  return displayedFinancialData.map((m) => ({
+    month: m.month,
+    profit: (m.income || 0) - (m.expenses || 0),
+  }));
+}, [displayedFinancialData]);
 
   const receiptItems = useMemo(() => {
   return expenses
@@ -2251,7 +2337,10 @@ if (activeView === "performance") {
               No receipts yet.
             </div>
           ) : (
-            receiptItems.map((item) => (
+  <>
+    {receiptItems
+      .slice(0, showAllReceipts ? receiptItems.length : 3)
+      .map((item) => (
               <div
                 key={item.id}
                 style={{
@@ -2297,8 +2386,29 @@ if (activeView === "performance") {
                   View
                 </button>
               </div>
-            ))
-          )}
+            ))}
+     </>
+   )}
+
+{receiptItems.length > 3 ? (
+  <button
+    type="button"
+    onClick={() => setShowAllReceipts((prev) => !prev)}
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.12)",
+      color: appStyles.text,
+      marginTop: 12,
+      width: "100%",
+      gridColumn: "1 / -1",
+    }}
+  >
+    {showAllReceipts
+      ? "Show Most Recent 3"
+      : "Show All Receipts"}
+  </button>
+) : null}
+
         </div>
 
         {selectedReceipt ? (
@@ -2442,6 +2552,112 @@ return (
           subValue="Tracked and ready"
         />
       </div>
+
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowBlue,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="Income vs Expenses"
+    subtitle="Monthly money flow"
+  />
+
+<div
+  style={{
+    display: "flex",
+    gap: 8,
+    marginBottom: 18,
+    flexWrap: "wrap",
+  }}
+>
+  {[
+    ["3m", "3 Months"],
+    ["6m", "6 Months"],
+    ["12m", "12 Months"],
+    ["all", "All"],
+  ].map(([value, label]) => (
+    <button
+      key={value}
+      type="button"
+      onClick={() => setChartRange(value)}
+      style={{
+        ...buttonStyle,
+        background:
+          chartRange === value
+            ? appStyles.accent2
+            : "rgba(255,255,255,0.08)",
+        color:
+          chartRange === value
+            ? "#06203a"
+            : appStyles.text,
+      }}
+    >
+      {label}
+    </button>
+  ))}
+</div>
+
+  <div style={{ height: 300 }}>
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={displayedFinancialData}>
+        <CartesianGrid strokeOpacity={0.2} />
+        <XAxis dataKey="month" />
+        <YAxis />
+        <Tooltip />
+        <Legend />
+        <Bar dataKey="income" fill={appStyles.accent2} name="Income" />
+        <Bar dataKey="expenses" fill="#ff6b6b" name="Expenses" />
+      </BarChart>
+    </ResponsiveContainer>
+  </div>
+</div>
+
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowPurple,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="Profit Trend"
+    subtitle="How your bowling business is trending"
+  />
+
+  <div style={{ height: 300 }}>
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={displayedProfitData}>
+        <CartesianGrid strokeOpacity={0.2} />
+        <XAxis dataKey="month" />
+        <YAxis />
+        <Tooltip />
+        <Legend />
+
+        <Line
+          type="monotone"
+          dataKey="profit"
+          stroke={appStyles.success}
+          strokeWidth={3}
+          dot
+          name="Profit"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</div>
 
       <div
         style={{
@@ -3128,7 +3344,9 @@ return (
             </div>
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
-              {filteredIncome.slice(0, 20).map((item) => (
+              {filteredIncome
+  .slice(0, showAllIncome ? filteredIncome.length : 3)
+  .map((item) => (
                 <div
                   key={item.id}
                   style={{
@@ -3203,6 +3421,21 @@ return (
                   </div>
                 </div>
               ))}
+{filteredIncome.length > 3 ? (
+  <button
+    type="button"
+    onClick={() => setShowAllIncome((prev) => !prev)}
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.12)",
+      color: appStyles.text,
+      marginTop: 12,
+      width: "100%",
+    }}
+  >
+    {showAllIncome ? "Show Most Recent 3" : "Show All Income"}
+  </button>
+) : null}
             </div>
           )}
         </div>

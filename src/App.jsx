@@ -1104,6 +1104,107 @@ trendColor:
   };
 }, [filteredSeries]);
 
+const personalRecords = useMemo(() => {
+  const games = filteredSeries.flatMap(
+    (s) => (s.games || []).map((g) => Number(g || 0))
+  );
+
+  const highGame = games.length ? Math.max(...games) : 0;
+
+  const highSeries = filteredSeries.length
+    ? Math.max(...filteredSeries.map((s) => Number(s.total || 0)))
+    : 0;
+
+  const totalGames = games.length;
+
+  const totalSeries = filteredSeries.length;
+
+  const average = games.length
+    ? (
+        games.reduce((sum, g) => sum + g, 0) /
+        games.length
+      ).toFixed(1)
+    : "0.0";
+
+  const games200 = games.filter((g) => g >= 200).length;
+
+  return {
+    highGame,
+    highSeries,
+    totalGames,
+    totalSeries,
+    average,
+    games200,
+  };
+}, [filteredSeries]);
+
+const achievements = useMemo(() => {
+  const games = filteredSeries.flatMap(
+    (s) => (s.games || []).map((g) => Number(g || 0))
+  );
+
+  const seriesTotals = filteredSeries.map((s) => Number(s.total || 0));
+
+  const games200 = games.filter((g) => g >= 200).length;
+  const games250 = games.filter((g) => g >= 250).length;
+  const games300 = games.filter((g) => g === 300).length;
+
+  const has600Series = seriesTotals.some((total) => total >= 600);
+  const has700Series = seriesTotals.some((total) => total >= 700);
+  const has800Series = seriesTotals.some((total) => total >= 800);
+
+  return [
+    {
+      label: "First 200 Game",
+      icon: "🥉",
+      unlocked: games200 > 0,
+      detail: games200 > 0 ? `${games200} total` : "Not yet",
+    },
+    {
+      label: "First 250 Game",
+      icon: "🥈",
+      unlocked: games250 > 0,
+      detail: games250 > 0 ? `${games250} total` : "Not yet",
+    },
+    {
+      label: "Perfect Game",
+      icon: "💎",
+      unlocked: games300 > 0,
+      detail: games300 > 0 ? `${games300} total` : "Not yet",
+    },
+    {
+      label: "600 Series",
+      icon: "🎳",
+      unlocked: has600Series,
+      detail: has600Series ? "Unlocked" : "Keep pushing",
+    },
+    {
+      label: "700 Series",
+      icon: "🔥",
+      unlocked: has700Series,
+      detail: has700Series ? "Unlocked" : "In the hunt",
+    },
+    {
+      label: "800 Series",
+      icon: "👑",
+      unlocked: has800Series,
+      detail: has800Series ? "Unlocked" : "Boss battle",
+    },
+    {
+      label: "100 Games Bowled",
+      icon: "📚",
+      unlocked: games.length >= 100,
+      detail: `${games.length}/100 games`,
+    },
+    {
+      label: "50 Series Logged",
+      icon: "🧾",
+      unlocked: filteredSeries.length >= 50,
+      detail: `${filteredSeries.length}/50 series`,
+    },
+  ];
+}, [filteredSeries]);
+
 const houseAverages = useMemo(() => {
   const grouped = {};
 
@@ -1481,6 +1582,139 @@ if (activeView === "performance") {
           subValue="High score"
         />
       </div>
+
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowBlue,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="🏅 Achievement Tracker"
+    subtitle="Milestones unlocked from your bowling history"
+  />
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : isFoldable
+          ? "repeat(2, minmax(0, 1fr))"
+          : "repeat(4, minmax(0, 1fr))",
+      gap: 12,
+    }}
+  >
+    {achievements.map((a) => (
+      <div
+        key={a.label}
+        style={{
+          background: a.unlocked
+            ? "rgba(255,255,255,0.10)"
+            : "rgba(255,255,255,0.04)",
+          border: `1px solid ${
+            a.unlocked
+              ? appStyles.accent2
+              : appStyles.cardBorder
+          }`,
+          borderRadius: 18,
+          padding: 14,
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: 32, marginBottom: 8 }}>
+          {a.icon}
+        </div>
+
+        <div
+          style={{
+            fontWeight: 700,
+            marginBottom: 6,
+            color: appStyles.text,
+          }}
+        >
+          {a.label}
+        </div>
+
+        <div
+          style={{
+            fontSize: 13,
+            color: appStyles.muted,
+          }}
+        >
+          {a.detail}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowPurple,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="🏆 Personal Records"
+    subtitle="Your best bowling marks from the current filters"
+  />
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : isFoldable
+          ? "repeat(2, minmax(0, 1fr))"
+          : "repeat(3, minmax(0, 1fr))",
+      gap: 12,
+    }}
+  >
+    <StatCard
+      label="Highest Game"
+      value={String(personalRecords.highGame)}
+      subValue="Best single game"
+    />
+    <StatCard
+      label="Highest Series"
+      value={String(personalRecords.highSeries)}
+      subValue="Best total set"
+    />
+    <StatCard
+      label="Overall Avg"
+      value={String(personalRecords.average)}
+      subValue="Across filtered games"
+    />
+    <StatCard
+      label="Games Bowled"
+      value={String(personalRecords.totalGames)}
+      subValue="Games tracked"
+    />
+    <StatCard
+      label="Series Bowled"
+      value={String(personalRecords.totalSeries)}
+      subValue="Series tracked"
+    />
+    <StatCard
+      label="200+ Games"
+      value={String(personalRecords.games200)}
+      subValue="Games at 200 or better"
+    />
+  </div>
+</div>
 
       <div
         style={{

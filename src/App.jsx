@@ -34,7 +34,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1119";
+const APP_VERSION = "v1120";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -1017,6 +1017,87 @@ const profitTrendData = useMemo(() => {
       .slice(0, 8);
   }, [filteredExpenses, filteredIncome]);
 
+const averageProgressionData = useMemo(() => {
+  const months = {};
+
+  filteredSeries.forEach((series) => {
+    const key = new Date(series.date).toLocaleDateString("en-US", {
+      month: "short",
+      year: "2-digit",
+    });
+
+    if (!months[key]) {
+      months[key] = {
+        month: key,
+        totalPins: 0,
+        games: 0,
+      };
+    }
+
+    (series.games || []).forEach((game) => {
+      months[key].totalPins += Number(game || 0);
+      months[key].games += 1;
+    });
+  });
+
+  return Object.values(months).map((m) => ({
+    month: m.month,
+    average:
+      m.games > 0
+        ? Number((m.totalPins / m.games).toFixed(1))
+        : 0,
+  }));
+}, [filteredSeries]);
+
+const thisMonthSummary = useMemo(() => {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+
+  const monthSeries = filteredSeries.filter((series) => {
+    const d = new Date(series.date);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  const games = monthSeries.flatMap((s) =>
+    (s.games || []).map(Number)
+  );
+
+  const average =
+    games.length > 0
+      ? (
+          games.reduce((a, b) => a + b, 0) /
+          games.length
+        ).toFixed(1)
+      : "0.0";
+
+  const highGame = games.length
+    ? Math.max(...games)
+    : 0;
+
+  const incomeThisMonth = income
+    .filter((i) => {
+      const d = new Date(i.date);
+      return d.getMonth() === month && d.getFullYear() === year;
+    })
+    .reduce((sum, i) => sum + Number(i.amount || 0), 0);
+
+  const expensesThisMonth = expenses
+    .filter((e) => {
+      const d = new Date(e.date);
+      return d.getMonth() === month && d.getFullYear() === year;
+    })
+    .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+
+  return {
+    games: games.length,
+    series: monthSeries.length,
+    average,
+    highGame,
+    profit: incomeThisMonth - expensesThisMonth,
+  };
+}, [filteredSeries, income, expenses]);
+
 const displayedFinancialData = useMemo(() => {
   switch (chartRange) {
     case "3m":
@@ -1231,6 +1312,72 @@ const houseAverages = useMemo(() => {
     }))
     .sort((a, b) => Number(b.average) - Number(a.average));
 }, [filteredSeries]);
+
+const houseStats = useMemo(() => {
+  return houseAverages.map((house) => {
+    const houseSeries = filteredSeries.filter(
+      (s) => s.house === house.house
+    );
+
+    const games = houseSeries.flatMap(
+      (s) => (s.games || []).map(Number)
+    );
+
+    const totals = houseSeries.map((s) => Number(s.total || 0));
+
+    const monthly = {};
+
+    houseSeries.forEach((series) => {
+      const month = new Date(series.date).toLocaleDateString(
+        "en-US",
+        {
+          month: "long",
+        }
+      );
+
+      if (!monthly[month]) {
+        monthly[month] = [];
+      }
+
+      monthly[month].push(series.average);
+    });
+
+    let bestMonth = "-";
+    let bestMonthAverage = 0;
+
+    Object.entries(monthly).forEach(([month, avgs]) => {
+      const avg =
+        avgs.reduce((a, b) => a + b, 0) /
+        avgs.length;
+
+      if (avg > bestMonthAverage) {
+        bestMonthAverage = avg;
+        bestMonth = month;
+      }
+    });
+
+    return {
+      ...house,
+
+      games: games.length,
+
+      series: houseSeries.length,
+
+      highGame: games.length
+        ? Math.max(...games)
+        : 0,
+
+      highSeries: totals.length
+        ? Math.max(...totals)
+        : 0,
+
+      games200: games.filter((g) => g >= 200)
+        .length,
+
+      bestMonth,
+    };
+  });
+}, [houseAverages, filteredSeries]);
 
 const miniPerformanceStats = useMemo(() => {
   const gamesThisYear = filteredSeries.reduce(
@@ -1716,6 +1863,45 @@ if (activeView === "performance") {
   </div>
 </div>
 
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowPurple,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="📈 Average Progression"
+    subtitle="Monthly average based on saved games"
+  />
+
+  <div style={{ height: 300 }}>
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={averageProgressionData}>
+        <CartesianGrid strokeOpacity={0.2} />
+        <XAxis dataKey="month" />
+        <YAxis />
+        <Tooltip />
+        <Legend />
+
+        <Line
+          type="monotone"
+          dataKey="average"
+          stroke={appStyles.accent}
+          strokeWidth={3}
+          dot
+          name="Average"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</div>
+
       <div
         style={{
           display: "grid",
@@ -2114,8 +2300,8 @@ if (activeView === "performance") {
               </div>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
-                {houseAverages
-  .slice(0, showAllHouseAverages ? houseAverages.length : 3)
+                {houseStats
+  .slice(0, showAllHouseAverages ? houseStats.length : 3)
   .map((item) => (
                   <div
                     key={item.house}
@@ -2149,16 +2335,46 @@ if (activeView === "performance") {
                       flexWrap: "wrap",
                     }}
                   >
-                    <div>
-                      <div style={{ fontWeight: 900 }}>{item.house}</div>
-                      <div style={{ color: appStyles.muted, fontSize: 14 }}>
-                        {item.games} games tracked
-                      </div>
-                    </div>
+                    <div style={{ width: "100%" }}>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 10,
+      flexWrap: "wrap",
+      alignItems: "center",
+    }}
+  >
+    <div>
+      <div style={{ fontWeight: 900 }}>🏠 {item.house}</div>
+      <div style={{ color: appStyles.muted, fontSize: 14 }}>
+        {item.games} games · {item.series} series
+      </div>
+    </div>
 
-                    <div style={{ fontSize: 22, fontWeight: 900 }}>
-                      {item.average}
-                    </div>
+    <div style={{ fontSize: 26, fontWeight: 900 }}>
+      {item.average}
+    </div>
+  </div>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : "repeat(3, minmax(0, 1fr))",
+      gap: 8,
+      marginTop: 12,
+      fontSize: 13,
+      color: appStyles.muted,
+    }}
+  >
+    <div>High Game: <strong style={{ color: appStyles.text }}>{item.highGame}</strong></div>
+    <div>High Series: <strong style={{ color: appStyles.text }}>{item.highSeries}</strong></div>
+    <div>200+ Games: <strong style={{ color: appStyles.text }}>{item.games200}</strong></div>
+    <div>Best Month: <strong style={{ color: appStyles.text }}>{item.bestMonth}</strong></div>
+  </div>
+</div>
                   </div>
                 ))}
               </div>
@@ -2786,6 +3002,66 @@ return (
           subValue="Tracked and ready"
         />
       </div>
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowBlue,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="🎳 This Month"
+    subtitle="Current month snapshot"
+  />
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : isFoldable
+          ? "repeat(2, minmax(0, 1fr))"
+          : "repeat(5, minmax(0, 1fr))",
+      gap: 12,
+    }}
+  >
+    <StatCard
+      label="Games"
+      value={String(thisMonthSummary.games)}
+      subValue="Bowled this month"
+    />
+    <StatCard
+      label="Series"
+      value={String(thisMonthSummary.series)}
+      subValue="Logged this month"
+    />
+    <StatCard
+      label="Average"
+      value={String(thisMonthSummary.average)}
+      subValue="This month"
+    />
+    <StatCard
+      label="High Game"
+      value={String(thisMonthSummary.highGame)}
+      subValue="Best this month"
+    />
+    <StatCard
+      label="Profit"
+      value={currency(thisMonthSummary.profit)}
+      subValue="Income minus expenses"
+      valueColor={
+        thisMonthSummary.profit >= 0
+          ? appStyles.success
+          : appStyles.danger
+      }
+    />
+  </div>
+</div>
 
 <div
   style={{

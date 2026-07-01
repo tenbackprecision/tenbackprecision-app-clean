@@ -34,7 +34,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1121";
+const APP_VERSION = "v1122";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -299,6 +299,7 @@ const [showAllExpenses, setShowAllExpenses] = useState(false);
 const [showAllIncome, setShowAllIncome] = useState(false);
 const [showAllReceipts, setShowAllReceipts] = useState(false);
 const [selectedSessionIntel, setSelectedSessionIntel] = useState(null);
+const [equipment, setEquipment] = useState([]);
 
 
 const [chartRange, setChartRange] = useState("12m");
@@ -339,6 +340,17 @@ const [chartRange, setChartRange] = useState("12m");
     amount: "",
     note: "",
   });
+
+const [equipmentForm, setEquipmentForm] = useState({
+  name: "",
+  manufacturer: "",
+  coverstock: "",
+  surface: "",
+  purchaseDate: "",
+  status: "Active",
+});
+
+const [editingEquipmentId, setEditingEquipmentId] = useState(null);
 
   const [perfFilters, setPerfFilters] = useState({
   house: "All",
@@ -479,6 +491,12 @@ const matchesYear =
       orderBy("date", "desc")
     );
 
+const equipmentQ = query(
+  collection(db, "equipment"),
+  where("uid", "==", user.uid),
+  orderBy("name", "asc")
+);
+
     const unsubExpenses = onSnapshot(
   expensesQ,
   (snap) => {
@@ -489,6 +507,17 @@ const matchesYear =
     console.error("Expenses snapshot error:", error);
     setDataLoading(false);
     showToast(`Expenses load failed: ${error.message}`, "error");
+  }
+);
+
+const unsubEquipment = onSnapshot(
+  equipmentQ,
+  (snap) => {
+    setEquipment(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  },
+  (error) => {
+    console.error("Equipment snapshot error:", error);
+    showToast(`Equipment load failed: ${error.message}`, "error");
   }
 );
 
@@ -709,6 +738,59 @@ showToast("Receipt added.");
       showToast(error.message || "Could not save income.", "error");
     }
   }
+
+async function saveEquipment() {
+  if (!equipmentForm.name.trim()) {
+    showToast("Please enter a ball name.", "error");
+    return;
+  }
+
+  const payload = {
+    uid: user.uid,
+    name: equipmentForm.name.trim(),
+    manufacturer: equipmentForm.manufacturer.trim(),
+    coverstock: equipmentForm.coverstock.trim(),
+    surface: equipmentForm.surface.trim(),
+    purchaseDate: equipmentForm.purchaseDate,
+    status: equipmentForm.status,
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    if (editingEquipmentId) {
+      await updateDoc(
+        doc(db, "equipment", editingEquipmentId),
+        payload
+      );
+
+      showToast("Equipment updated!");
+    } else {
+      payload.createdAt = serverTimestamp();
+
+      await addDoc(
+        collection(db, "equipment"),
+        payload
+      );
+
+      showToast("Ball added!");
+    }
+
+    setEquipmentForm({
+      name: "",
+      manufacturer: "",
+      coverstock: "",
+      surface: "",
+      purchaseDate: "",
+      status: "Active",
+    });
+
+    setEditingEquipmentId(null);
+  } catch (err) {
+    console.error(err);
+    showToast(err.message, "error");
+  }
+}
+
   async function saveSeries() {
     const games = (newSeries.games || [])
   .map((g) => Number(g || 0))
@@ -2419,7 +2501,205 @@ if (activeView === "performance") {
   boxShadow: appStyles.glowBlue,
   padding: 18,
 }}
+ 
+      >
+
+
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowPurple,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="🎒 Equipment Manager"
+    subtitle="Build your digital bowling bag"
+  />
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : "repeat(2, minmax(0, 1fr))",
+      gap: 10,
+      marginBottom: 14,
+    }}
+  >
+    <input
+      placeholder="Ball Name"
+      value={equipmentForm.name}
+      onChange={(e) =>
+        setEquipmentForm((prev) => ({ ...prev, name: e.target.value }))
+      }
+      style={inputStyle}
+    />
+
+    <input
+      placeholder="Manufacturer"
+      value={equipmentForm.manufacturer}
+      onChange={(e) =>
+        setEquipmentForm((prev) => ({
+          ...prev,
+          manufacturer: e.target.value,
+        }))
+      }
+      style={inputStyle}
+    />
+
+    <input
+      placeholder="Coverstock"
+      value={equipmentForm.coverstock}
+      onChange={(e) =>
+        setEquipmentForm((prev) => ({ ...prev, coverstock: e.target.value }))
+      }
+      style={inputStyle}
+    />
+
+    <input
+      placeholder="Surface"
+      value={equipmentForm.surface}
+      onChange={(e) =>
+        setEquipmentForm((prev) => ({ ...prev, surface: e.target.value }))
+      }
+      style={inputStyle}
+    />
+
+    <input
+      type="date"
+      value={equipmentForm.purchaseDate}
+      onChange={(e) =>
+        setEquipmentForm((prev) => ({
+          ...prev,
+          purchaseDate: e.target.value,
+        }))
+      }
+      style={inputStyle}
+    />
+
+    <select
+      value={equipmentForm.status}
+      onChange={(e) =>
+        setEquipmentForm((prev) => ({ ...prev, status: e.target.value }))
+      }
+      style={inputStyle}
+    >
+      <option>Active</option>
+      <option>Retired</option>
+    </select>
+  </div>
+
+  <button
+    type="button"
+    onClick={saveEquipment}
+    style={{
+      ...buttonStyle,
+      background: appStyles.accent,
+      color: "#1a1633",
+      width: "100%",
+    }}
+  >
+    {editingEquipmentId ? "Update Ball" : "+ Add Ball"}
+  </button>
+
+{editingEquipmentId ? (
+  <button
+    type="button"
+    onClick={() => {
+      setEditingEquipmentId(null);
+      setEquipmentForm({
+        name: "",
+        manufacturer: "",
+        coverstock: "",
+        surface: "",
+        purchaseDate: "",
+        status: "Active",
+      });
+    }}
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.12)",
+      color: appStyles.text,
+      width: "100%",
+      marginTop: 10,
+    }}
+  >
+    Cancel Edit
+  </button>
+) : null}
+
+  <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
+    {equipment.length === 0 ? (
+      <div style={{ color: appStyles.muted, textAlign: "center" }}>
+        No equipment added yet.
+      </div>
+    ) : (
+      equipment.map((ball) => (
+        <div
+          key={ball.id}
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: `1px solid ${appStyles.cardBorder}`,
+            borderRadius: 18,
+            padding: 14,
+          }}
         >
+          <div style={{ fontWeight: 900, fontSize: 18 }}>
+            🎳 {ball.name}
+          </div>
+          <div style={{ color: appStyles.muted, marginTop: 4 }}>
+            {[ball.manufacturer, ball.coverstock, ball.surface]
+              .filter(Boolean)
+              .join(" · ") || "No details yet"}
+          </div>
+          <div style={{ marginTop: 8, color: appStyles.accent }}>
+            {ball.status || "Active"}
+          </div>
+
+<div
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 12,
+    flexWrap: "wrap",
+  }}
+>
+  <button
+    type="button"
+    onClick={() => {
+      setEditingEquipmentId(ball.id);
+      setEquipmentForm({
+        name: ball.name || "",
+        manufacturer: ball.manufacturer || "",
+        coverstock: ball.coverstock || "",
+        surface: ball.surface || "",
+        purchaseDate: ball.purchaseDate || "",
+        status: ball.status || "Active",
+      });
+    }}
+    style={{
+      ...buttonStyle,
+      background: appStyles.accent,
+      color: "#1a1633",
+      padding: "8px 12px",
+    }}
+  >
+    Edit
+  </button>
+</div>
+
+        </div>
+      ))
+    )}
+  </div>
+</div>
           <SectionTitle
             title="Recent Series"
             subtitle="Latest saved house and score data"

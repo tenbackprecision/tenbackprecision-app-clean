@@ -34,7 +34,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1122";
+const APP_VERSION = "v1120";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -160,19 +160,6 @@ function normalizeDate(value) {
   }
 
   return todayString();
-}
-
-function normalizeBowlrDate(value) {
-  if (!value) return todayString();
-
-  const raw = String(value).trim();
-
-  // Bowlr format: 2026-07-02 20:57:00.000
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
-    return raw.slice(0, 10);
-  }
-
-  return normalizeDate(value);
 }
 
 function sameish(a, b) {
@@ -310,9 +297,8 @@ export default function App() {
 const [showAllRecentActivity, setShowAllRecentActivity] = useState(false);
 const [showAllExpenses, setShowAllExpenses] = useState(false);
 const [showAllIncome, setShowAllIncome] = useState(false);
-const [showAllReceipts, setShowAllReceipts] = useState(false);
-const [selectedSessionIntel, setSelectedSessionIntel] = useState(null);
-const [equipment, setEquipment] = useState([]);
+const [showAllReceipts, setShowAllReceipts] = useState(false);const [selectedSessionIntel, setSelectedSessionIntel] = useState(null);
+
 
 
 const [chartRange, setChartRange] = useState("12m");
@@ -353,17 +339,6 @@ const [chartRange, setChartRange] = useState("12m");
     amount: "",
     note: "",
   });
-
-const [equipmentForm, setEquipmentForm] = useState({
-  name: "",
-  manufacturer: "",
-  coverstock: "",
-  surface: "",
-  purchaseDate: "",
-  status: "Active",
-});
-
-const [editingEquipmentId, setEditingEquipmentId] = useState(null);
 
   const [perfFilters, setPerfFilters] = useState({
   house: "All",
@@ -428,9 +403,6 @@ const matchesYear =
 });
 
   const importFileRef = useRef(null);
-
-  const [bowlrPreview, setBowlrPreview] = useState(null);
-  const bowlrImportRef = useRef(null);
 
   const isPhone = screenWidth < 700;
 
@@ -507,12 +479,6 @@ const matchesYear =
       orderBy("date", "desc")
     );
 
-const equipmentQ = query(
-  collection(db, "equipment"),
-  where("uid", "==", user.uid),
-  orderBy("name", "asc")
-);
-
     const unsubExpenses = onSnapshot(
   expensesQ,
   (snap) => {
@@ -523,17 +489,6 @@ const equipmentQ = query(
     console.error("Expenses snapshot error:", error);
     setDataLoading(false);
     showToast(`Expenses load failed: ${error.message}`, "error");
-  }
-);
-
-const unsubEquipment = onSnapshot(
-  equipmentQ,
-  (snap) => {
-    setEquipment(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  },
-  (error) => {
-    console.error("Equipment snapshot error:", error);
-    showToast(`Equipment load failed: ${error.message}`, "error");
   }
 );
 
@@ -560,11 +515,10 @@ const unsubSeries = onSnapshot(
 );
 
     return () => {
-  unsubExpenses();
-  unsubIncome();
-  unsubSeries();
-  unsubEquipment();
-};
+      unsubExpenses();
+      unsubIncome();
+      unsubSeries();
+    };
   }, [user]);
 
   async function handleReceiptFile(file) {
@@ -755,59 +709,6 @@ showToast("Receipt added.");
       showToast(error.message || "Could not save income.", "error");
     }
   }
-
-async function saveEquipment() {
-  if (!equipmentForm.name.trim()) {
-    showToast("Please enter a ball name.", "error");
-    return;
-  }
-
-  const payload = {
-    uid: user.uid,
-    name: equipmentForm.name.trim(),
-    manufacturer: equipmentForm.manufacturer.trim(),
-    coverstock: equipmentForm.coverstock.trim(),
-    surface: equipmentForm.surface.trim(),
-    purchaseDate: equipmentForm.purchaseDate,
-    status: equipmentForm.status,
-    updatedAt: serverTimestamp(),
-  };
-
-  try {
-    if (editingEquipmentId) {
-      await updateDoc(
-        doc(db, "equipment", editingEquipmentId),
-        payload
-      );
-
-      showToast("Equipment updated!");
-    } else {
-      payload.createdAt = serverTimestamp();
-
-      await addDoc(
-        collection(db, "equipment"),
-        payload
-      );
-
-      showToast("Ball added!");
-    }
-
-    setEquipmentForm({
-      name: "",
-      manufacturer: "",
-      coverstock: "",
-      surface: "",
-      purchaseDate: "",
-      status: "Active",
-    });
-
-    setEditingEquipmentId(null);
-  } catch (err) {
-    console.error(err);
-    showToast(err.message, "error");
-  }
-}
-
   async function saveSeries() {
     const games = (newSeries.games || [])
   .map((g) => Number(g || 0))
@@ -998,291 +899,6 @@ for (const row of rows) {
     reader.readAsArrayBuffer(file);
   }
 
-function handleBowlrImportFile(file) {
-  if (!file) return;
-
-  const reader = new FileReader();
-
-  reader.onload = (e) => {
-    try {
-      const text = e.target.result;
-      const workbook = XLSX.read(text, { type: "string" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet);
-      
-
-      const unique = (field) =>
-        [...new Set(rows.map((row) => row[field]).filter(Boolean))];
-
-      const strikeBalls = [
-        ...unique("firstLaneStrikeBallId"),
-        ...unique("secondLaneStrikeBallId"),
-      ];
-
-      const spareBalls = [
-        ...unique("firstLaneSpareBallId"),
-        ...unique("secondLaneSpareBallId"),
-      ];
-
-      const patterns = [
-        ...unique("firstLaneOilPattern"),
-        ...unique("secondLaneOilPattern"),
-      ];
-
-      setBowlrPreview({
-  rows,
-  games: rows.length,
-  houses: unique("house"),
-  leagues: unique("league"),
-  tournaments: unique("tournament"),
-  balls: [...new Set([...strikeBalls, ...spareBalls])],
-  patterns: [...new Set(patterns)],
-});
-
-      showToast("Bowlr file scanned.");
-    } catch (err) {
-      console.error(err);
-      showToast("Could not read Bowlr file.", "error");
-    }
-  };
-
-  reader.readAsText(file);
-}
-
-function convertBowlrRowToSeries(row) {
-  console.log("Bowlr row sample:", row);
-console.log("Bowlr date fields:", {
-  dateTime: row.dateTime,
-  date: row.date,
-  startDate: row.startDate,
-  createdAt: row.createdAt,
-});
-
-const score = Number(row.score || 0);
-
-  const primaryBall =
-    row.firstLaneStrikeBallId ||
-    row.secondLaneStrikeBallId ||
-    "";
-
-  const secondaryBall =
-    row.firstLaneSpareBallId ||
-    row.secondLaneSpareBallId ||
-    "";
-
-  const oilPattern =
-    row.firstLaneOilPattern ||
-    row.secondLaneOilPattern ||
-    "";
-
-  const laneInfo =
-    row.firstLane && row.secondLane
-      ? `Lanes ${row.firstLane}/${row.secondLane}`
-      : row.firstLane
-        ? `Lane ${row.firstLane}`
-        : "";
-
-  const details = [
-    row.league ? `League: ${row.league}` : "",
-    row.leagueWeek ? `Week: ${row.leagueWeek}` : "",
-    row.tournament ? `Tournament: ${row.tournament}` : "",
-    laneInfo,
-    row.notes ? `Bowlr Notes: ${row.notes}` : "",
-    row.id ? `Bowlr ID: ${row.id}` : "",
-  ]
-    .filter(Boolean)
-    .join(" | ");
-
-  return {
-    uid: user.uid,
-    date: normalizeBowlrDate(row.dateTime),
-    house: String(row.house || "Unknown House").trim(),
-    type: row.type || "Practice",
-
-    oilPattern: String(oilPattern || "").trim(),
-    primaryBall: String(primaryBall || "").trim(),
-    secondaryBall: String(secondaryBall || "").trim(),
-    feet: "",
-    target: "",
-    breakpoint: "",
-    surface: "",
-    transitionNote: "",
-
-    notes: details,
-    games: score > 0 ? [score] : [],
-    total: score,
-    average: score,
-    highGame: score,
-    bowlrId: row.id || "",
-    source: "Bowlr",
-    updatedAt: serverTimestamp(),
-  };
-}
-
-function convertBowlrRowsToGroupedSeries(rows) {
-  const groups = {};
-
-  rows.forEach((row) => {
-    const date = normalizeBowlrDate(row.dateTime);
-    const house = String(row.house || "Unknown House").trim();
-    const sessionKey = [
-  date,
-  house,
-  row.type || "",
-  row.league || "",
-].join("|");
-
-const key = sessionKey;
-
-    if (!groups[key]) {
-      groups[key] = {
-        rows: [],
-        date,
-        house,
-        type: row.tournament ? "Tournament" : row.league ? "League" : "Practice",
-        league: row.league || "",
-        tournament: row.tournament || "",
-        oilPattern:
-          row.firstLaneOilPattern ||
-          row.secondLaneOilPattern ||
-          "",
-        primaryBall:
-          row.firstLaneStrikeBallId ||
-          row.secondLaneStrikeBallId ||
-          "",
-        secondaryBall:
-          row.firstLaneSpareBallId ||
-          row.secondLaneSpareBallId ||
-          "",
-      };
-    }
-
-    groups[key].rows.push(row);
-  });
-
-  return Object.values(groups).map((group) => {
-    const games = group.rows
-      .map((row) => Number(row.score || 0))
-      .filter((score) => score > 0);
-
-    const total = games.reduce((sum, score) => sum + score, 0);
-    const average = games.length ? Number((total / games.length).toFixed(1)) : 0;
-    const highGame = games.length ? Math.max(...games) : 0;
-
-    const bowlrIds = group.rows
-      .map((row) => row.id)
-      .filter(Boolean)
-      .join(",");
-
-    const notes = [
-  group.league ? `League: ${group.league}` : "",
-  group.tournament ? `Tournament: ${group.tournament}` : "",
-]
-      .filter(Boolean)
-      .join(" | ");
-
-    return {
-      uid: user.uid,
-      date: group.date,
-      house: group.house,
-      type: group.type,
-      oilPattern: String(group.oilPattern || "").trim(),
-      primaryBall: String(group.primaryBall || "").trim(),
-      secondaryBall: String(group.secondaryBall || "").trim(),
-      feet: "",
-      target: "",
-      breakpoint: "",
-      surface: "",
-      transitionNote: "",
-      notes,
-      games,
-      total,
-      average,
-      highGame,
-      bowlrId: bowlrIds,
-      source: "Bowlr",
-      updatedAt: serverTimestamp(),
-    };
-  });
-}
-
-async function importBowlrGames() {
-  if (!bowlrPreview?.rows?.length) {
-    showToast("Upload a Bowlr file first.", "error");
-    return;
-  }
-
-  const groupedSeries = convertBowlrRowsToGroupedSeries(bowlrPreview.rows);
-
-  const confirmed = window.confirm(
-    `Import ${groupedSeries.length} grouped Bowlr series from ${bowlrPreview.rows.length} games?`
-  );
-
-  if (!confirmed) return;
-
-  let added = 0;
-  let skipped = 0;
-
-  const existingBowlrIds = new Set(
-    seriesList
-      .map((series) => series.bowlrId)
-      .filter(Boolean)
-  );
-
-  try {
-    for (const payload of groupedSeries) {
-      if (!payload.games.length) {
-        skipped++;
-        continue;
-      }
-
-      if (payload.bowlrId && existingBowlrIds.has(payload.bowlrId)) {
-        skipped++;
-        continue;
-      }
-
-      await addDoc(collection(db, "series"), {
-        ...payload,
-        createdAt: serverTimestamp(),
-      });
-
-      added++;
-    }
-
-    showToast(
-      `Bowlr grouped import complete: ${added} added, ${skipped} skipped.`
-    );
-  } catch (err) {
-    console.error(err);
-    showToast("Bowlr import failed.", "error");
-  }
-}
-
-async function deleteImportedBowlrGames() {
-  const imported = seriesList.filter((series) => series.source === "Bowlr");
-
-  if (!imported.length) {
-    showToast("No Bowlr imported games found.", "error");
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `Delete ${imported.length} Bowlr imported games? Your manual series will stay safe.`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    for (const series of imported) {
-      await deleteDoc(doc(db, "series", series.id));
-    }
-
-    showToast(`Deleted ${imported.length} Bowlr imported games.`);
-  } catch (err) {
-    console.error(err);
-    showToast("Could not delete Bowlr imported games.", "error");
-  }
-}
   const months = useMemo(() => {
     const set = new Set([
       ...expenses.map((e) => monthKey(e.date)),
@@ -2803,320 +2419,7 @@ if (activeView === "performance") {
   boxShadow: appStyles.glowBlue,
   padding: 18,
 }}
- 
-      >
-
-
-<div
-  style={{
-    background: appStyles.card,
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 24,
-    backdropFilter: "blur(18px)",
-    WebkitBackdropFilter: "blur(18px)",
-    boxShadow: appStyles.glowPurple,
-    padding: 18,
-    marginBottom: 18,
-  }}
->
-  <SectionTitle
-    title="🎒 Equipment Manager"
-    subtitle="Build your digital bowling bag"
-  />
-
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: isPhone
-        ? "1fr"
-        : "repeat(2, minmax(0, 1fr))",
-      gap: 10,
-      marginBottom: 14,
-    }}
-  >
-    <input
-      placeholder="Ball Name"
-      value={equipmentForm.name}
-      onChange={(e) =>
-        setEquipmentForm((prev) => ({ ...prev, name: e.target.value }))
-      }
-      style={inputStyle}
-    />
-
-    <input
-      placeholder="Manufacturer"
-      value={equipmentForm.manufacturer}
-      onChange={(e) =>
-        setEquipmentForm((prev) => ({
-          ...prev,
-          manufacturer: e.target.value,
-        }))
-      }
-      style={inputStyle}
-    />
-
-    <input
-      placeholder="Coverstock"
-      value={equipmentForm.coverstock}
-      onChange={(e) =>
-        setEquipmentForm((prev) => ({ ...prev, coverstock: e.target.value }))
-      }
-      style={inputStyle}
-    />
-
-    <input
-      placeholder="Surface"
-      value={equipmentForm.surface}
-      onChange={(e) =>
-        setEquipmentForm((prev) => ({ ...prev, surface: e.target.value }))
-      }
-      style={inputStyle}
-    />
-
-    <input
-      type="date"
-      value={equipmentForm.purchaseDate}
-      onChange={(e) =>
-        setEquipmentForm((prev) => ({
-          ...prev,
-          purchaseDate: e.target.value,
-        }))
-      }
-      style={inputStyle}
-    />
-
-    <select
-      value={equipmentForm.status}
-      onChange={(e) =>
-        setEquipmentForm((prev) => ({ ...prev, status: e.target.value }))
-      }
-      style={inputStyle}
-    >
-      <option>Active</option>
-      <option>Retired</option>
-    </select>
-  </div>
-
-  <button
-    type="button"
-    onClick={saveEquipment}
-    style={{
-      ...buttonStyle,
-      background: appStyles.accent,
-      color: "#1a1633",
-      width: "100%",
-    }}
-  >
-    {editingEquipmentId ? "Update Ball" : "+ Add Ball"}
-  </button>
-
-{editingEquipmentId ? (
-  <button
-    type="button"
-    onClick={() => {
-      setEditingEquipmentId(null);
-      setEquipmentForm({
-        name: "",
-        manufacturer: "",
-        coverstock: "",
-        surface: "",
-        purchaseDate: "",
-        status: "Active",
-      });
-    }}
-    style={{
-      ...buttonStyle,
-      background: "rgba(255,255,255,0.12)",
-      color: appStyles.text,
-      width: "100%",
-      marginTop: 10,
-    }}
-  >
-    Cancel Edit
-  </button>
-) : null}
-
-  <div style={{ marginTop: 16, display: "grid", gap: 10 }}>
-    {equipment.length === 0 ? (
-      <div style={{ color: appStyles.muted, textAlign: "center" }}>
-        No equipment added yet.
-      </div>
-    ) : (
-      equipment.map((ball) => (
-        <div
-          key={ball.id}
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 18,
-            padding: 14,
-          }}
         >
-          <div style={{ fontWeight: 900, fontSize: 18 }}>
-            🎳 {ball.name}
-          </div>
-          <div style={{ color: appStyles.muted, marginTop: 4 }}>
-            {[ball.manufacturer, ball.coverstock, ball.surface]
-              .filter(Boolean)
-              .join(" · ") || "No details yet"}
-          </div>
-          <div style={{ marginTop: 8, color: appStyles.accent }}>
-            {ball.status || "Active"}
-          </div>
-
-<div
-  style={{
-    display: "flex",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 12,
-    flexWrap: "wrap",
-  }}
->
-  <button
-    type="button"
-    onClick={() => {
-      setEditingEquipmentId(ball.id);
-      setEquipmentForm({
-        name: ball.name || "",
-        manufacturer: ball.manufacturer || "",
-        coverstock: ball.coverstock || "",
-        surface: ball.surface || "",
-        purchaseDate: ball.purchaseDate || "",
-        status: ball.status || "Active",
-      });
-    }}
-    style={{
-      ...buttonStyle,
-      background: appStyles.accent,
-      color: "#1a1633",
-      padding: "8px 12px",
-    }}
-  >
-    Edit
-  </button>
-</div>
-
-        </div>
-      ))
-    )}
-  </div>
-</div>
-
-<div
-  style={{
-    background: appStyles.card,
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 24,
-    backdropFilter: "blur(18px)",
-    WebkitBackdropFilter: "blur(18px)",
-    boxShadow: appStyles.glowBlue,
-    padding: 18,
-    marginBottom: 18,
-  }}
->
-  <SectionTitle
-    title="📥 Bowlr Import Preview"
-    subtitle="Scan your Bowlr export before importing"
-  />
-
-  <input
-    ref={bowlrImportRef}
-    type="file"
-    accept=".csv"
-    style={{ display: "none" }}
-    onChange={(e) => handleBowlrImportFile(e.target.files?.[0])}
-  />
-
-  <button
-    type="button"
-    onClick={() => bowlrImportRef.current?.click()}
-    style={{
-      ...buttonStyle,
-      background: appStyles.accent,
-      color: "#1a1633",
-      width: "100%",
-    }}
-  >
-    Upload Bowlr CSV
-  </button>
-
-  {bowlrPreview ? (
-    <div
-      style={{
-        marginTop: 16,
-        display: "grid",
-        gridTemplateColumns: isPhone
-          ? "1fr"
-          : "repeat(3, minmax(0, 1fr))",
-        gap: 10,
-      }}
-    >
-      <StatCard
-        label="Games Found"
-        value={String(bowlrPreview.games)}
-        subValue="From Bowlr export"
-      />
-      <StatCard
-        label="Houses"
-        value={String(bowlrPreview.houses.length)}
-        subValue="Centers found"
-      />
-      <StatCard
-        label="Balls"
-        value={String(bowlrPreview.balls.length)}
-        subValue="Ball IDs found"
-      />
-      <StatCard
-        label="Leagues"
-        value={String(bowlrPreview.leagues.length)}
-        subValue="League names"
-      />
-      <StatCard
-        label="Tournaments"
-        value={String(bowlrPreview.tournaments.length)}
-        subValue="Tournament names"
-      />
-      <StatCard
-        label="Patterns"
-        value={String(bowlrPreview.patterns.length)}
-        subValue="Oil patterns found"
-      />
-    </div>
-  ) : null}
-
-{bowlrPreview ? (
-  <div>
-    <button
-      type="button"
-      onClick={importBowlrGames}
-      style={{
-        ...buttonStyle,
-        background: appStyles.success,
-        color: "#052e16",
-        width: "100%",
-        marginTop: 16,
-      }}
-    >
-      Import {bowlrPreview.games} Bowlr Games
-    </button>
-
-    <button
-      type="button"
-      onClick={deleteImportedBowlrGames}
-      style={{
-        ...buttonStyle,
-        background: appStyles.danger,
-        color: "#fff",
-        width: "100%",
-        marginTop: 10,
-      }}
-    >
-      Delete Previous Bowlr Import
-    </button>
-  </div>
-) : null}
-</div>
           <SectionTitle
             title="Recent Series"
             subtitle="Latest saved house and score data"
@@ -3315,16 +2618,8 @@ transitionNote: series.transitionNote || "",
                         }, 100);
                       }}
                       style={buttonStyle}
-                                        >
-                      Edit
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSessionIntel(series)}
-                      style={buttonStyle}
                     >
-                      📋 Session Intel
+                      Edit
                     </button>
 
                     <button
@@ -3362,164 +2657,6 @@ transitionNote: series.transitionNote || "",
           )}
         </div>
       </div>
-
-{selectedSessionIntel ? (
-  <div
-    onClick={() => setSelectedSessionIntel(null)}
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.75)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20,
-      zIndex: 100,
-    }}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: 520,
-        maxWidth: "100%",
-        background: appStyles.card,
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 24,
-        padding: 20,
-        boxShadow: appStyles.glowBlue,
-      }}
-    >
-      <SectionTitle
-        title="🎳 Session Intel"
-        subtitle={`${selectedSessionIntel.house || "Unknown House"} · ${
-          selectedSessionIntel.date || "No Date"
-        }`}
-      />
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {[
-          ["Oil Pattern", selectedSessionIntel.oilPattern],
-          ["Primary Ball", selectedSessionIntel.primaryBall],
-          ["Secondary Ball", selectedSessionIntel.secondaryBall],
-          ["Feet", selectedSessionIntel.feet],
-          ["Target", selectedSessionIntel.target],
-          ["Breakpoint", selectedSessionIntel.breakpoint],
-          ["Surface", selectedSessionIntel.surface],
-          ["Transition", selectedSessionIntel.transitionNote],
-          ["Notes", selectedSessionIntel.notes],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              borderBottom: `1px solid ${appStyles.cardBorder}`,
-              paddingBottom: 8,
-            }}
-          >
-            <strong>{label}</strong>
-            <span style={{ color: appStyles.muted, textAlign: "right" }}>
-              {value || "—"}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setSelectedSessionIntel(null)}
-        style={{
-          ...buttonStyle,
-          width: "100%",
-          marginTop: 18,
-          background: appStyles.accent,
-          color: "#1a1633",
-        }}
-      >
-        Close
-      </button>
-    </div>
-  </div>
-) : null}{selectedSessionIntel ? (
-  <div
-    onClick={() => setSelectedSessionIntel(null)}
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.75)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20,
-      zIndex: 100,
-    }}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: 520,
-        maxWidth: "100%",
-        background: appStyles.card,
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 24,
-        padding: 20,
-        boxShadow: appStyles.glowBlue,
-      }}
-    >
-      <SectionTitle
-        title="🎳 Session Intel"
-        subtitle={`${selectedSessionIntel.house || "Unknown House"} · ${
-          selectedSessionIntel.date || "No Date"
-        }`}
-      />
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {[
-          ["Oil Pattern", selectedSessionIntel.oilPattern],
-          ["Primary Ball", selectedSessionIntel.primaryBall],
-          ["Secondary Ball", selectedSessionIntel.secondaryBall],
-          ["Feet", selectedSessionIntel.feet],
-          ["Target", selectedSessionIntel.target],
-          ["Breakpoint", selectedSessionIntel.breakpoint],
-          ["Surface", selectedSessionIntel.surface],
-          ["Transition", selectedSessionIntel.transitionNote],
-          ["Notes", selectedSessionIntel.notes],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              borderBottom: `1px solid ${appStyles.cardBorder}`,
-              paddingBottom: 8,
-            }}
-          >
-            <strong>{label}</strong>
-            <span style={{ color: appStyles.muted, textAlign: "right" }}>
-              {value || "—"}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setSelectedSessionIntel(null)}
-        style={{
-          ...buttonStyle,
-          width: "100%",
-          marginTop: 18,
-          background: appStyles.accent,
-          color: "#1a1633",
-        }}
-      >
-        Close
-      </button>
-    </div>
-  </div>
-) : null}
 
       {toast ? (
         <div

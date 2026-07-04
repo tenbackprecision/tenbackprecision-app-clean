@@ -162,19 +162,6 @@ function normalizeDate(value) {
   return todayString();
 }
 
-function normalizeBowlrDate(value) {
-  if (!value) return todayString();
-
-  const raw = String(value).trim();
-
-  // Bowlr format: 2026-07-02 20:57:00.000
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
-    return raw.slice(0, 10);
-  }
-
-  return normalizeDate(value);
-}
-
 function sameish(a, b) {
   if (!a && !b) return true;
   return String(a).trim() === String(b).trim();
@@ -1009,7 +996,6 @@ function handleBowlrImportFile(file) {
       const workbook = XLSX.read(text, { type: "string" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet);
-      
 
       const unique = (field) =>
         [...new Set(rows.map((row) => row[field]).filter(Boolean))];
@@ -1030,14 +1016,13 @@ function handleBowlrImportFile(file) {
       ];
 
       setBowlrPreview({
-  rows,
-  games: rows.length,
-  houses: unique("house"),
-  leagues: unique("league"),
-  tournaments: unique("tournament"),
-  balls: [...new Set([...strikeBalls, ...spareBalls])],
-  patterns: [...new Set(patterns)],
-});
+        games: rows.length,
+        houses: unique("house"),
+        leagues: unique("league"),
+        tournaments: unique("tournament"),
+        balls: [...new Set([...strikeBalls, ...spareBalls])],
+        patterns: [...new Set(patterns)],
+      });
 
       showToast("Bowlr file scanned.");
     } catch (err) {
@@ -1049,240 +1034,6 @@ function handleBowlrImportFile(file) {
   reader.readAsText(file);
 }
 
-function convertBowlrRowToSeries(row) {
-  console.log("Bowlr row sample:", row);
-console.log("Bowlr date fields:", {
-  dateTime: row.dateTime,
-  date: row.date,
-  startDate: row.startDate,
-  createdAt: row.createdAt,
-});
-
-const score = Number(row.score || 0);
-
-  const primaryBall =
-    row.firstLaneStrikeBallId ||
-    row.secondLaneStrikeBallId ||
-    "";
-
-  const secondaryBall =
-    row.firstLaneSpareBallId ||
-    row.secondLaneSpareBallId ||
-    "";
-
-  const oilPattern =
-    row.firstLaneOilPattern ||
-    row.secondLaneOilPattern ||
-    "";
-
-  const laneInfo =
-    row.firstLane && row.secondLane
-      ? `Lanes ${row.firstLane}/${row.secondLane}`
-      : row.firstLane
-        ? `Lane ${row.firstLane}`
-        : "";
-
-  const details = [
-    row.league ? `League: ${row.league}` : "",
-    row.leagueWeek ? `Week: ${row.leagueWeek}` : "",
-    row.tournament ? `Tournament: ${row.tournament}` : "",
-    laneInfo,
-    row.notes ? `Bowlr Notes: ${row.notes}` : "",
-    row.id ? `Bowlr ID: ${row.id}` : "",
-  ]
-    .filter(Boolean)
-    .join(" | ");
-
-  return {
-    uid: user.uid,
-    date: normalizeBowlrDate(row.dateTime),
-    house: String(row.house || "Unknown House").trim(),
-    type: row.type || "Practice",
-
-    oilPattern: String(oilPattern || "").trim(),
-    primaryBall: String(primaryBall || "").trim(),
-    secondaryBall: String(secondaryBall || "").trim(),
-    feet: "",
-    target: "",
-    breakpoint: "",
-    surface: "",
-    transitionNote: "",
-
-    notes: details,
-    games: score > 0 ? [score] : [],
-    total: score,
-    average: score,
-    highGame: score,
-    bowlrId: row.id || "",
-    source: "Bowlr",
-    updatedAt: serverTimestamp(),
-  };
-}
-
-function convertBowlrRowsToGroupedSeries(rows) {
-  const groups = {};
-
-  rows.forEach((row) => {
-    const date = normalizeBowlrDate(row.dateTime);
-    const house = String(row.house || "Unknown House").trim();
-    const sessionKey = [
-  date,
-  house,
-  row.type || "",
-  row.league || "",
-].join("|");
-
-const key = sessionKey;
-
-    if (!groups[key]) {
-      groups[key] = {
-        rows: [],
-        date,
-        house,
-        type: row.tournament ? "Tournament" : row.league ? "League" : "Practice",
-        league: row.league || "",
-        tournament: row.tournament || "",
-        oilPattern:
-          row.firstLaneOilPattern ||
-          row.secondLaneOilPattern ||
-          "",
-        primaryBall:
-          row.firstLaneStrikeBallId ||
-          row.secondLaneStrikeBallId ||
-          "",
-        secondaryBall:
-          row.firstLaneSpareBallId ||
-          row.secondLaneSpareBallId ||
-          "",
-      };
-    }
-
-    groups[key].rows.push(row);
-  });
-
-  return Object.values(groups).map((group) => {
-    const games = group.rows
-      .map((row) => Number(row.score || 0))
-      .filter((score) => score > 0);
-
-    const total = games.reduce((sum, score) => sum + score, 0);
-    const average = games.length ? Number((total / games.length).toFixed(1)) : 0;
-    const highGame = games.length ? Math.max(...games) : 0;
-
-    const bowlrIds = group.rows
-      .map((row) => row.id)
-      .filter(Boolean)
-      .join(",");
-
-    const notes = [
-  group.league ? `League: ${group.league}` : "",
-  group.tournament ? `Tournament: ${group.tournament}` : "",
-]
-      .filter(Boolean)
-      .join(" | ");
-
-    return {
-      uid: user.uid,
-      date: group.date,
-      house: group.house,
-      type: group.type,
-      oilPattern: String(group.oilPattern || "").trim(),
-      primaryBall: String(group.primaryBall || "").trim(),
-      secondaryBall: String(group.secondaryBall || "").trim(),
-      feet: "",
-      target: "",
-      breakpoint: "",
-      surface: "",
-      transitionNote: "",
-      notes,
-      games,
-      total,
-      average,
-      highGame,
-      bowlrId: bowlrIds,
-      source: "Bowlr",
-      updatedAt: serverTimestamp(),
-    };
-  });
-}
-
-async function importBowlrGames() {
-  if (!bowlrPreview?.rows?.length) {
-    showToast("Upload a Bowlr file first.", "error");
-    return;
-  }
-
-  const groupedSeries = convertBowlrRowsToGroupedSeries(bowlrPreview.rows);
-
-  const confirmed = window.confirm(
-    `Import ${groupedSeries.length} grouped Bowlr series from ${bowlrPreview.rows.length} games?`
-  );
-
-  if (!confirmed) return;
-
-  let added = 0;
-  let skipped = 0;
-
-  const existingBowlrIds = new Set(
-    seriesList
-      .map((series) => series.bowlrId)
-      .filter(Boolean)
-  );
-
-  try {
-    for (const payload of groupedSeries) {
-      if (!payload.games.length) {
-        skipped++;
-        continue;
-      }
-
-      if (payload.bowlrId && existingBowlrIds.has(payload.bowlrId)) {
-        skipped++;
-        continue;
-      }
-
-      await addDoc(collection(db, "series"), {
-        ...payload,
-        createdAt: serverTimestamp(),
-      });
-
-      added++;
-    }
-
-    showToast(
-      `Bowlr grouped import complete: ${added} added, ${skipped} skipped.`
-    );
-  } catch (err) {
-    console.error(err);
-    showToast("Bowlr import failed.", "error");
-  }
-}
-
-async function deleteImportedBowlrGames() {
-  const imported = seriesList.filter((series) => series.source === "Bowlr");
-
-  if (!imported.length) {
-    showToast("No Bowlr imported games found.", "error");
-    return;
-  }
-
-  const confirmed = window.confirm(
-    `Delete ${imported.length} Bowlr imported games? Your manual series will stay safe.`
-  );
-
-  if (!confirmed) return;
-
-  try {
-    for (const series of imported) {
-      await deleteDoc(doc(db, "series", series.id));
-    }
-
-    showToast(`Deleted ${imported.length} Bowlr imported games.`);
-  } catch (err) {
-    console.error(err);
-    showToast("Could not delete Bowlr imported games.", "error");
-  }
-}
   const months = useMemo(() => {
     const set = new Set([
       ...expenses.map((e) => monthKey(e.date)),
@@ -3084,38 +2835,6 @@ if (activeView === "performance") {
       />
     </div>
   ) : null}
-
-{bowlrPreview ? (
-  <div>
-    <button
-      type="button"
-      onClick={importBowlrGames}
-      style={{
-        ...buttonStyle,
-        background: appStyles.success,
-        color: "#052e16",
-        width: "100%",
-        marginTop: 16,
-      }}
-    >
-      Import {bowlrPreview.games} Bowlr Games
-    </button>
-
-    <button
-      type="button"
-      onClick={deleteImportedBowlrGames}
-      style={{
-        ...buttonStyle,
-        background: appStyles.danger,
-        color: "#fff",
-        width: "100%",
-        marginTop: 10,
-      }}
-    >
-      Delete Previous Bowlr Import
-    </button>
-  </div>
-) : null}
 </div>
           <SectionTitle
             title="Recent Series"

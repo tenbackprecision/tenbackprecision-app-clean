@@ -35,7 +35,7 @@ import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 
-const APP_VERSION = "v1124-cleanup";
+const APP_VERSION = "v1125-Session Intel";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -355,14 +355,21 @@ const [chartRange, setChartRange] = useState("12m");
     note: "",
   });
 
-const [equipmentForm, setEquipmentForm] = useState({
+const emptyEquipmentForm = {
   name: "",
   manufacturer: "",
+  weight: "",
+  core: "",
   coverstock: "",
+  finish: "",
   surface: "",
+  layout: "",
   purchaseDate: "",
   status: "Active",
-});
+  image: "",
+};
+
+const [equipmentForm, setEquipmentForm] = useState(emptyEquipmentForm);
 
 const [editingEquipmentId, setEditingEquipmentId] = useState(null);
 
@@ -763,16 +770,32 @@ async function saveEquipment() {
     return;
   }
 
-  const payload = {
-    uid: user.uid,
-    name: equipmentForm.name.trim(),
-    manufacturer: equipmentForm.manufacturer.trim(),
-    coverstock: equipmentForm.coverstock.trim(),
-    surface: equipmentForm.surface.trim(),
-    purchaseDate: equipmentForm.purchaseDate,
-    status: equipmentForm.status,
-    updatedAt: serverTimestamp(),
-  };
+ const payload = {
+  uid: user.uid,
+
+  name: equipmentForm.name.trim(),
+  manufacturer: equipmentForm.manufacturer.trim(),
+
+  weight: equipmentForm.weight.trim(),
+  core: equipmentForm.core.trim(),
+
+  coverstock: equipmentForm.coverstock.trim(),
+  finish: equipmentForm.finish.trim(),
+  surface: equipmentForm.surface.trim(),
+  layout: equipmentForm.layout.trim(),
+
+  purchaseDate: equipmentForm.purchaseDate,
+  status: equipmentForm.status,
+
+  image: equipmentForm.image || "",
+
+  games: 0,
+  average: 0,
+  highGame: 0,
+  bestSeries: 0,
+
+  updatedAt: serverTimestamp(),
+};
 
   try {
     if (editingEquipmentId) {
@@ -832,24 +855,28 @@ const stats = { games, total, average, highGame };
 
     const payload = {
   uid: user.uid,
-  date: newSeries.date,
-  house: newSeries.house.trim(),
-  type: newSeries.type,
 
-  oilPattern: newSeries.oilPattern.trim(),
-  primaryBall: newSeries.primaryBall.trim(),
-  secondaryBall: newSeries.secondaryBall.trim(),
-  feet: newSeries.feet.trim(),
-  target: newSeries.target.trim(),
-  breakpoint: newSeries.breakpoint.trim(),
-  surface: newSeries.surface.trim(),
-  transitionNote: newSeries.transitionNote.trim(),
+  name: String(equipmentForm.name || "").trim(),
+  manufacturer: String(equipmentForm.manufacturer || "").trim(),
 
-  notes: newSeries.notes.trim(),
-  games: stats.games,
-  total: stats.total,
-  average: Number(stats.average),
-  highGame: stats.highGame,
+  weight: String(equipmentForm.weight || "").trim(),
+  core: String(equipmentForm.core || "").trim(),
+
+  coverstock: String(equipmentForm.coverstock || "").trim(),
+  finish: String(equipmentForm.finish || "").trim(),
+  surface: String(equipmentForm.surface || "").trim(),
+  layout: String(equipmentForm.layout || "").trim(),
+
+  purchaseDate: equipmentForm.purchaseDate || "",
+  status: equipmentForm.status || "Active",
+
+  image: equipmentForm.image || "",
+
+  games: Number(equipmentForm.games || 0),
+  average: Number(equipmentForm.average || 0),
+  highGame: Number(equipmentForm.highGame || 0),
+  bestSeries: Number(equipmentForm.bestSeries || 0),
+
   updatedAt: serverTimestamp(),
 };
 
@@ -2916,14 +2943,7 @@ if (activeView === "performance") {
     type="button"
     onClick={() => {
       setEditingEquipmentId(null);
-      setEquipmentForm({
-        name: "",
-        manufacturer: "",
-        coverstock: "",
-        surface: "",
-        purchaseDate: "",
-        status: "Active",
-      });
+      setEquipmentForm(emptyEquipmentForm);
     }}
     style={{
       ...buttonStyle,
@@ -2979,13 +2999,29 @@ if (activeView === "performance") {
     onClick={() => {
       setEditingEquipmentId(ball.id);
       setEquipmentForm({
-        name: ball.name || "",
-        manufacturer: ball.manufacturer || "",
-        coverstock: ball.coverstock || "",
-        surface: ball.surface || "",
-        purchaseDate: ball.purchaseDate || "",
-        status: ball.status || "Active",
-      });
+  ...emptyEquipmentForm,
+
+  name: ball.name || "",
+  manufacturer: ball.manufacturer || "",
+
+  weight: ball.weight || "",
+  core: ball.core || "",
+
+  coverstock: ball.coverstock || "",
+  finish: ball.finish || "",
+  surface: ball.surface || "",
+  layout: ball.layout || "",
+
+  purchaseDate: ball.purchaseDate || "",
+  status: ball.status || "Active",
+
+  image: ball.image || "",
+
+  games: ball.games || 0,
+  average: ball.average || 0,
+  highGame: ball.highGame || 0,
+  bestSeries: ball.bestSeries || 0,
+});
     }}
     style={{
       ...buttonStyle,
@@ -4136,6 +4172,19 @@ return (
                 onChange={(e) => setExpenseForm((prev) => ({ ...prev, amount: e.target.value }))}
                 style={inputStyle}
               />
+
+<textarea
+  placeholder="Note"
+  value={expenseForm.note}
+  onChange={(e) =>
+    setExpenseForm((prev) => ({ ...prev, note: e.target.value }))
+  }
+  style={{
+    ...inputStyle,
+    height: 116,
+resize: "none",
+  }}
+/>
 
               <label
                 style={{

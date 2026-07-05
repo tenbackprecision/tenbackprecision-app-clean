@@ -33,6 +33,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
+import SessionIntelModal from "./components/SessionIntelModal";
 
 const APP_VERSION = "v1124-cleanup";
 const MAX_RECEIPT_SIZE_MB = 8;
@@ -3252,6 +3253,20 @@ if (activeView === "performance") {
                       flexWrap: "wrap",
                     }}
                   >
+
+<button
+  type="button"
+  onClick={() => setSelectedSessionIntel(series)}
+  style={{
+    ...buttonStyle,
+    width: "100%",
+    background: appStyles.accent,
+    color: "#1a1633",
+  }}
+>
+  📋 Session Intel
+</button>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -3293,6 +3308,7 @@ transitionNote: series.transitionNote || "",
                       }}
                       style={buttonStyle}
                                         >
+
                       Edit
                     </button>
 
@@ -3332,85 +3348,12 @@ transitionNote: series.transitionNote || "",
         </div>
       </div>
 
-{selectedSessionIntel ? (
-  <div
-    onClick={() => setSelectedSessionIntel(null)}
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.75)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20,
-      zIndex: 100,
-    }}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: 520,
-        maxWidth: "100%",
-        background: appStyles.card,
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 24,
-        padding: 20,
-        boxShadow: appStyles.glowBlue,
-      }}
-    >
-      <SectionTitle
-        title="🎳 Session Intel"
-        subtitle={`${selectedSessionIntel.house || "Unknown House"} · ${
-          selectedSessionIntel.date || "No Date"
-        }`}
-      />
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {[
-          ["Oil Pattern", selectedSessionIntel.oilPattern],
-          ["Primary Ball", selectedSessionIntel.primaryBall],
-          ["Secondary Ball", selectedSessionIntel.secondaryBall],
-          ["Feet", selectedSessionIntel.feet],
-          ["Target", selectedSessionIntel.target],
-          ["Breakpoint", selectedSessionIntel.breakpoint],
-          ["Surface", selectedSessionIntel.surface],
-          ["Transition", selectedSessionIntel.transitionNote],
-          ["Notes", selectedSessionIntel.notes],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              borderBottom: `1px solid ${appStyles.cardBorder}`,
-              paddingBottom: 8,
-            }}
-          >
-            <strong>{label}</strong>
-            <span style={{ color: appStyles.muted, textAlign: "right" }}>
-              {value || "—"}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setSelectedSessionIntel(null)}
-        style={{
-          ...buttonStyle,
-          width: "100%",
-          marginTop: 18,
-          background: appStyles.accent,
-          color: "#1a1633",
-        }}
-      >
-        Close
-      </button>
-    </div>
-  </div>
-) : null}
+<SessionIntelModal
+  selectedSessionIntel={selectedSessionIntel}
+  setSelectedSessionIntel={setSelectedSessionIntel}
+  appStyles={appStyles}
+  buttonStyle={buttonStyle}
+/>
 
       {toast ? (
         <div

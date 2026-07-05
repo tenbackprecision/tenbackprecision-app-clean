@@ -34,7 +34,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 
-const APP_VERSION = "v1122";
+const APP_VERSION = "v1124-cleanup";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -3243,29 +3243,6 @@ if (activeView === "performance") {
                     <strong>{series.highGame}</strong>
                   </div>
 
-<button
-  type="button"
-  onClick={() =>
-    setExpandedSeries((prev) => ({
-      ...prev,
-      [series.id]: !prev[series.id],
-    }))
-  }
-  style={{
-    ...buttonStyle,
-    width: "100%",
-    marginTop: 10,
-  }}
->
-  {isExpanded ? "Hide Details" : "View Details"}
-</button>
-
-                  {series.notes ? (
-                    <div style={{ marginTop: 8, color: appStyles.muted }}>
-                      {series.notes}
-                    </div>
-                  ) : null}
-
                   <div
                     style={{
                       display: "flex",
@@ -3321,14 +3298,6 @@ transitionNote: series.transitionNote || "",
 
                     <button
                       type="button"
-                      onClick={() => setSelectedSessionIntel(series)}
-                      style={buttonStyle}
-                    >
-                      📋 Session Intel
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => handleDelete(series.id)}
                       style={{ ...buttonStyle, background: "#ff4d4f" }}
                     >
@@ -3364,84 +3333,6 @@ transitionNote: series.transitionNote || "",
       </div>
 
 {selectedSessionIntel ? (
-  <div
-    onClick={() => setSelectedSessionIntel(null)}
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.75)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 20,
-      zIndex: 100,
-    }}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: 520,
-        maxWidth: "100%",
-        background: appStyles.card,
-        border: `1px solid ${appStyles.cardBorder}`,
-        borderRadius: 24,
-        padding: 20,
-        boxShadow: appStyles.glowBlue,
-      }}
-    >
-      <SectionTitle
-        title="🎳 Session Intel"
-        subtitle={`${selectedSessionIntel.house || "Unknown House"} · ${
-          selectedSessionIntel.date || "No Date"
-        }`}
-      />
-
-      <div style={{ display: "grid", gap: 10 }}>
-        {[
-          ["Oil Pattern", selectedSessionIntel.oilPattern],
-          ["Primary Ball", selectedSessionIntel.primaryBall],
-          ["Secondary Ball", selectedSessionIntel.secondaryBall],
-          ["Feet", selectedSessionIntel.feet],
-          ["Target", selectedSessionIntel.target],
-          ["Breakpoint", selectedSessionIntel.breakpoint],
-          ["Surface", selectedSessionIntel.surface],
-          ["Transition", selectedSessionIntel.transitionNote],
-          ["Notes", selectedSessionIntel.notes],
-        ].map(([label, value]) => (
-          <div
-            key={label}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              borderBottom: `1px solid ${appStyles.cardBorder}`,
-              paddingBottom: 8,
-            }}
-          >
-            <strong>{label}</strong>
-            <span style={{ color: appStyles.muted, textAlign: "right" }}>
-              {value || "—"}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setSelectedSessionIntel(null)}
-        style={{
-          ...buttonStyle,
-          width: "100%",
-          marginTop: 18,
-          background: appStyles.accent,
-          color: "#1a1633",
-        }}
-      >
-        Close
-      </button>
-    </div>
-  </div>
-) : null}{selectedSessionIntel ? (
   <div
     onClick={() => setSelectedSessionIntel(null)}
     style={{
@@ -4336,64 +4227,9 @@ return (
     background: "rgba(255,255,255,0.04)",
   }}
 >
-  <div style={{ fontWeight: 900, marginBottom: 10 }}>
-    🎳 Session Intel
-  </div>
-
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: isPhone
-        ? "1fr"
-        : isFoldable
-          ? "repeat(2, minmax(0, 1fr))"
-          : "repeat(4, minmax(0, 1fr))",
-      gap: 10,
-    }}
-  >
-    {[
-      ["oilPattern", "Oil Pattern"],
-      ["primaryBall", "Primary Ball"],
-      ["secondaryBall", "Secondary Ball"],
-      ["feet", "Feet"],
-      ["target", "Target Board"],
-      ["breakpoint", "Breakpoint"],
-      ["surface", "Surface"],
-      ["transitionNote", "Transition Note"],
-    ].map(([key, label]) => (
-      <input
-        key={key}
-        type="text"
-        placeholder={label}
-        value={newSeries[key]}
-        onChange={(e) =>
-          setNewSeries((prev) => ({
-            ...prev,
-            [key]: e.target.value,
-          }))
-        }
-        style={inputStyle}
-      />
-    ))}
-  </div>
+ 
 </div>
 
-            <textarea
-              placeholder="Notes"
-              rows={4}
-              value={expenseForm.note}
-              onChange={(e) => setExpenseForm((prev) => ({ ...prev, note: e.target.value }))}
-              style={{ ...inputStyle, resize: "vertical" }}
-            />
-
-            <div 
-		style={{ 
-		display: "flex",
-		justifyContent: "center",
-		gap: 12,
-		flexWrap: "wrap",
-}}
->
               <button
                 onClick={saveExpense}
                 style={{
@@ -4416,7 +4252,7 @@ return (
                 Clear
               </button>
             </div>
-          </div>
+         
         </div>
 
         <div

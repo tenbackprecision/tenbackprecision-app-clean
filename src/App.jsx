@@ -34,6 +34,7 @@ import {
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
+import AddSeriesForm from "./components/AddSeriesForm";
 
 const APP_VERSION = "v1125-Session Intel";
 const MAX_RECEIPT_SIZE_MB = 8;
@@ -391,6 +392,14 @@ const performanceEvents = [
   ...new Set(seriesList.map((item) => item.type || item.event).filter(Boolean)),
 ];
 
+const equipmentOptions = useMemo(
+  () =>
+    equipment
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  [equipment]
+);
+
 const filteredSeries = seriesList.filter((item) => {
   const itemEvent = item.type || item.event;
 
@@ -425,14 +434,20 @@ const matchesYear =
   type: "Practice",
   games: ["", "", ""],
   oilPattern: "",
+
   primaryBall: "",
+  primaryBallId: "",
+
   secondaryBall: "",
+  secondaryBallId: "",
+
   feet: "",
   target: "",
   breakpoint: "",
   surface: "",
   transitionNote: "",
   notes: "",
+  pinLayout: [],
 });
 
   const importFileRef = useRef(null);
@@ -658,14 +673,20 @@ showToast("Receipt added.");
     type: "Practice",
     games: ["", "", ""],
     oilPattern: "",
+
     primaryBall: "",
+    primaryBallId: "",
+
     secondaryBall: "",
+    secondaryBallId: "",
+
     feet: "",
     target: "",
     breakpoint: "",
     surface: "",
     transitionNote: "",
     notes: "",
+    pinLayout: [],
   });
 }
 
@@ -816,14 +837,7 @@ async function saveEquipment() {
       showToast("Ball added!");
     }
 
-    setEquipmentForm({
-      name: "",
-      manufacturer: "",
-      coverstock: "",
-      surface: "",
-      purchaseDate: "",
-      status: "Active",
-    });
+    setEquipmentForm(emptyEquipmentForm);
 
     setEditingEquipmentId(null);
   } catch (err) {
@@ -832,72 +846,187 @@ async function saveEquipment() {
   }
 }
 
-  async function saveSeries() {
-    const games = (newSeries.games || [])
-  .map((g) => Number(g || 0))
-  .filter((g) => g > 0);
+function calculateBallStats(ball, allSeries) {
+  const ballId = String(ball?.id || "").trim();
+  const cleanBallName = String(ball?.name || "").trim().toLowerCase();
 
-const total = games.reduce((sum, g) => sum + g, 0);
-const average = games.length ? (total / games.length).toFixed(1) : "0.0";
-const highGame = games.length ? Math.max(...games) : 0;
-
-const stats = { games, total, average, highGame };
-
-    if (!newSeries.house.trim()) {
-      showToast("Add a house first.", "error");
-      return;
-    }
-
-    if (stats.games.length < 1) {
-      showToast("Add at least 1 game.", "error");
-      return;
-    }
-
-    const payload = {
-  uid: user.uid,
-
-  name: String(equipmentForm.name || "").trim(),
-  manufacturer: String(equipmentForm.manufacturer || "").trim(),
-
-  weight: String(equipmentForm.weight || "").trim(),
-  core: String(equipmentForm.core || "").trim(),
-
-  coverstock: String(equipmentForm.coverstock || "").trim(),
-  finish: String(equipmentForm.finish || "").trim(),
-  surface: String(equipmentForm.surface || "").trim(),
-  layout: String(equipmentForm.layout || "").trim(),
-
-  purchaseDate: equipmentForm.purchaseDate || "",
-  status: equipmentForm.status || "Active",
-
-  image: equipmentForm.image || "",
-
-  games: Number(equipmentForm.games || 0),
-  average: Number(equipmentForm.average || 0),
-  highGame: Number(equipmentForm.highGame || 0),
-  bestSeries: Number(equipmentForm.bestSeries || 0),
-
-  updatedAt: serverTimestamp(),
-};
-
-    try {
-if (editingSeriesId) {
-  await updateDoc(doc(db, "series", editingSeriesId), payload);
-  setEditingSeriesId(null);
-  showToast("Series updated.");
-} else {
-  await addDoc(collection(db, "series"), {
-    ...payload,
-    createdAt: serverTimestamp(),
-  });
-  showToast("Series saved.");
-}
-      resetSeriesForm();
-    } catch (error) {
-      console.error(error);
-      showToast("Could not save series.", "error");
-    }
+  if (!ballId && !cleanBallName) {
+    return {
+      games: 0,
+      average: 0,
+      highGame: 0,
+      bestSeries: 0,
+      favoriteHouse: "",
+      favoritePattern: "",
+      lastUsed: "",
+    };
   }
+
+  const matchingSeries = allSeries.filter((series) => {
+    const primaryId = String(series.primaryBallId || "").trim();
+    const secondaryId = String(series.secondaryBallId || "").trim();
+
+    const primaryName = String(series.primaryBall || "").trim().toLowerCase();
+    const secondaryName = String(series.secondaryBall || "").trim().toLowerCase();
+
+    const matchesById =
+      ballId && (primaryId === ballId || secondaryId === ballId);
+
+    const matchesByName =
+      cleanBallName &&
+      !primaryId &&
+      !secondaryId &&
+      (primaryName === cleanBallName || secondaryName === cleanBallName);
+
+    return matchesById || matchesByName;
+  });
+
+  const games = matchingSeries.flatMap((series) =>
+    (series.games || []).map((game) => Number(game || 0)).filter((game) => game > 0)
+  );
+
+  const totalPins = games.reduce((sum, game) => sum + game, 0);
+
+  const houseCounts = {};
+  const patternCounts = {};
+
+  matchingSeries.forEach((series) => {
+    if (series.house) {
+      houseCounts[series.house] = (houseCounts[series.house] || 0) + 1;
+    }
+
+    if (series.oilPattern) {
+      patternCounts[series.oilPattern] = (patternCounts[series.oilPattern] || 0) + 1;
+    }
+  });
+
+  const mostCommon = (counts) => {
+    const entries = Object.entries(counts);
+    if (!entries.length) return "";
+
+    return entries.sort((a, b) => b[1] - a[1])[0][0];
+  };
+
+  const sortedByDate = [...matchingSeries].sort((a, b) =>
+    String(b.date || "").localeCompare(String(a.date || ""))
+  );
+
+  return {
+    games: games.length,
+    average: games.length ? Number((totalPins / games.length).toFixed(1)) : 0,
+    highGame: games.length ? Math.max(...games) : 0,
+    bestSeries: matchingSeries.length
+      ? Math.max(...matchingSeries.map((series) => Number(series.total || 0)))
+      : 0,
+    favoriteHouse: mostCommon(houseCounts),
+    favoritePattern: mostCommon(patternCounts),
+    lastUsed: sortedByDate[0]?.date || "",
+  };
+}
+
+async function refreshEquipmentStats(updatedSeriesList) {
+  if (!equipment.length) return;
+
+  for (const ball of equipment) {
+    const stats = calculateBallStats(ball, updatedSeriesList);
+
+    await updateDoc(doc(db, "equipment", ball.id), {
+      games: stats.games,
+      average: stats.average,
+      highGame: stats.highGame,
+      bestSeries: stats.bestSeries,
+      favoriteHouse: stats.favoriteHouse,
+      favoritePattern: stats.favoritePattern,
+      lastUsed: stats.lastUsed,
+      updatedAt: serverTimestamp(),
+    });
+  }
+}
+
+async function saveSeries() {
+  const games = (newSeries.games || [])
+    .map((g) => Number(g || 0))
+    .filter((g) => g > 0);
+
+  const total = games.reduce((sum, g) => sum + g, 0);
+  const average = games.length ? Number((total / games.length).toFixed(1)) : 0;
+  const highGame = games.length ? Math.max(...games) : 0;
+
+  if (!newSeries.house.trim()) {
+    showToast("Add a house first.", "error");
+    return;
+  }
+
+  if (games.length < 1) {
+    showToast("Add at least 1 game.", "error");
+    return;
+  }
+
+  const payload = {
+    uid: user.uid,
+    date: newSeries.date,
+    house: newSeries.house.trim(),
+    type: newSeries.type || "Practice",
+
+    oilPattern: String(newSeries.oilPattern || "").trim(),
+    primaryBall: String(newSeries.primaryBall || "").trim(),
+    secondaryBall: String(newSeries.secondaryBall || "").trim(),
+    primaryBallId: newSeries.primaryBallId || "",
+    secondaryBallId: newSeries.secondaryBallId || "",
+    feet: String(newSeries.feet || "").trim(),
+    target: String(newSeries.target || "").trim(),
+    breakpoint: String(newSeries.breakpoint || "").trim(),
+    surface: String(newSeries.surface || "").trim(),
+    transitionNote: String(newSeries.transitionNote || "").trim(),
+    notes: String(newSeries.notes || "").trim(),
+    pinLayout: Array.isArray(newSeries.pinLayout)
+      ? newSeries.pinLayout
+      : [],
+
+    games,
+    total,
+    average,
+    highGame,
+
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    let updatedSeriesList = [];
+
+    if (editingSeriesId) {
+      await updateDoc(doc(db, "series", editingSeriesId), payload);
+
+      updatedSeriesList = seriesList.map((series) =>
+        series.id === editingSeriesId
+          ? { ...series, ...payload, id: editingSeriesId }
+          : series
+      );
+
+      setEditingSeriesId(null);
+      showToast("Series updated.");
+    } else {
+      const addedRef = await addDoc(collection(db, "series"), {
+        ...payload,
+        createdAt: serverTimestamp(),
+      });
+
+      updatedSeriesList = [
+        { ...payload, id: addedRef.id },
+        ...seriesList,
+      ];
+
+      showToast("Series saved.");
+    }
+
+    await refreshEquipmentStats(updatedSeriesList);
+
+    resetSeriesForm();
+  } catch (error) {
+    console.error(error);
+    showToast("Could not save series.", "error");
+  }
+}
 
   async function removeExpense(item) {
     const confirmed = window.confirm(
@@ -2419,168 +2548,24 @@ if (activeView === "performance") {
             </select>
           </div>
 
-          <div ref={addSeriesRef}>
-            <SectionTitle
-  title={editingSeriesId ? "Editing Series" : "Add Series"}
-  subtitle={
-    editingSeriesId
-      ? "Update this saved series, then tap Update Series."
-      : "House, event type, games, and notes"
-  }
+<div ref={addSeriesRef}>
+  <AddSeriesForm
+  editingSeriesId={editingSeriesId}
+  newSeries={newSeries}
+  setNewSeries={setNewSeries}
+  performanceTypes={performanceTypes}
+  inputStyle={inputStyle}
+  isPhone={isPhone}
+  isFoldable={isFoldable}
+  equipment={equipment}
+  equipmentOptions={equipmentOptions}
+  buttonStyle={buttonStyle}
+  appStyles={appStyles}
+  saveSeries={saveSeries}
+  resetSeriesForm={resetSeriesForm}
 />
+</div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isPhone
-                  ? "1fr"
-                  : isFoldable
-                    ? "repeat(2, minmax(0, 1fr))"
-                    : "repeat(4, minmax(0, 1fr))",
-                gap: 12,
-              }}
-            >
-              <input
-                type="date"
-                value={newSeries.date}
-                onChange={(e) => setNewSeries((prev) => ({ ...prev, date: e.target.value }))}
-                style={inputStyle}
-              />
-
-              <input
-                type="text"
-                placeholder="House"
-                value={newSeries.house}
-                onChange={(e) => setNewSeries((prev) => ({ ...prev, house: e.target.value }))}
-                style={inputStyle}
-              />
-
-              <select
-                value={newSeries.type}
-                onChange={(e) => setNewSeries((prev) => ({ ...prev, type: e.target.value }))}
-                style={inputStyle}
-              >
-                {performanceTypes.map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </select>
-
-
-              {newSeries.games.map((game, index) => (
-  <input
-    key={index}
-    type="number"
-    placeholder={`Game ${index + 1}`}
-    value={game}
-    onChange={(e) => {
-      const updatedGames = [...newSeries.games];
-      updatedGames[index] = e.target.value;
-      setNewSeries((prev) => ({
-        ...prev,
-        games: updatedGames,
-      }));
-    }}
-    style={inputStyle}
-  />
-))}
-
-<button
-  type="button"
-  onClick={() =>
-    setNewSeries((prev) => ({
-      ...prev,
-      games: [...prev.games, ""],
-    }))
-  }
-  style={{
-    ...buttonStyle,
-    background: "rgba(255,255,255,0.12)",
-    color: appStyles.text,
-  }}
->
-  + Add Game
-</button>
-
-<button
-  type="button"
-  onClick={() =>
-    setNewSeries((prev) => ({
-      ...prev,
-      games:
-        prev.games.length > 1
-          ? prev.games.slice(0, -1)
-          : prev.games,
-    }))
-  }
-  style={{
-    ...buttonStyle,
-    background: "rgba(255,255,255,0.12)",
-    color: appStyles.text,
-  }}
->
-  - Remove Game
-</button>
-
-              <textarea
-                placeholder="Notes"
-                rows={4}
-                value={newSeries.notes}
-                onChange={(e) => setNewSeries((prev) => ({ ...prev, notes: e.target.value }))}
-                style={{ ...inputStyle, gridColumn: "1 / -1", resize: "vertical" }}
-              />
-
-              <div
-                style={{
-                  gridColumn: "1 / -1",
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={saveSeries}
-                  style={{
-                    ...buttonStyle,
-                    background: appStyles.accent2,
-                    color: "#06203a",
-                  }}
-                >
-                  {editingSeriesId ? "Update Series" : "Save Series"}
-                </button>
-
-                {editingSeriesId ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingSeriesId(null);
-                      resetSeriesForm();
-                    }}
-                    style={{
-                      ...buttonStyle,
-                      background: "rgba(255,255,255,0.18)",
-                      color: appStyles.text,
-                    }}
-                  >
-                    Cancel Edit
-                  </button>
-                ) : null}
-
-                <button
-                  type="button"
-                  onClick={resetSeriesForm}
-                  style={{
-                    ...buttonStyle,
-                    background: "rgba(255,255,255,0.12)",
-                    color: appStyles.text,
-                  }}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         {showHouseAverages ? (
@@ -2987,6 +2972,51 @@ if (activeView === "performance") {
 
 <div
   style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(2, 1fr)",
+    gap: 10,
+    marginTop: 14,
+  }}
+>
+  <div>
+    <strong>🎳 Games</strong>
+    <br />
+    {ball.games || 0}
+  </div>
+
+  <div>
+    <strong>📈 Average</strong>
+    <br />
+    {ball.average || 0}
+  </div>
+
+  <div>
+    <strong>🔥 High Game</strong>
+    <br />
+    {ball.highGame || 0}
+  </div>
+
+  <div>
+    <strong>🏆 Best Series</strong>
+    <br />
+    {ball.bestSeries || 0}
+  </div>
+
+  <div>
+    <strong>🏠 Favorite House</strong>
+    <br />
+    {ball.favoriteHouse || "—"}
+  </div>
+
+  <div>
+    <strong>📅 Last Used</strong>
+    <br />
+    {ball.lastUsed || "—"}
+  </div>
+</div>
+
+<div
+  style={{
     display: "flex",
     justifyContent: "center",
     gap: 10,
@@ -3280,6 +3310,21 @@ if (activeView === "performance") {
                     <strong>{series.highGame}</strong>
                   </div>
 
+{Array.isArray(series.pinLayout) && series.pinLayout.length > 0 && (
+  <div
+    style={{
+      marginTop: 8,
+      color: appStyles.muted,
+      fontSize: 14,
+    }}
+  >
+    🎳 Pin Layout:{" "}
+    <strong style={{ color: appStyles.text }}>
+      {series.pinLayout.join("-")}
+    </strong>
+  </div>
+)}
+
                   <div
                     style={{
                       display: "flex",
@@ -3333,6 +3378,9 @@ surface: series.surface || "",
 transitionNote: series.transitionNote || "",
 
   notes: series.notes || "",
+ pinLayout: Array.isArray(series.pinLayout)
+  ? series.pinLayout
+  : [],
 });
 
                         setTimeout(() => {

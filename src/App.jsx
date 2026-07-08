@@ -448,6 +448,11 @@ const matchesYear =
   transitionNote: "",
   notes: "",
   pinLayout: [],
+boardLayout: {
+  feet: "",
+  target: "",
+  breakpoint: "",
+},
 });
 
   const importFileRef = useRef(null);
@@ -687,6 +692,11 @@ showToast("Receipt added.");
     transitionNote: "",
     notes: "",
     pinLayout: [],
+boardLayout: {
+  feet: "",
+  target: "",
+  breakpoint: "",
+},
   });
 }
 
@@ -982,7 +992,11 @@ async function saveSeries() {
     pinLayout: Array.isArray(newSeries.pinLayout)
       ? newSeries.pinLayout
       : [],
-
+boardLayout: {
+  feet: newSeries.boardLayout?.feet || "",
+  target: newSeries.boardLayout?.target || "",
+  breakpoint: newSeries.boardLayout?.breakpoint || "",
+},
     games,
     total,
     average,
@@ -3325,6 +3339,27 @@ if (activeView === "performance") {
   </div>
 )}
 
+{series.boardLayout &&
+(
+  series.boardLayout.feet ||
+  series.boardLayout.target ||
+  series.boardLayout.breakpoint
+) && (
+  <div
+    style={{
+      marginTop: 8,
+      color: appStyles.muted,
+      fontSize: 14,
+    }}
+  >
+    🎯 Board Layout:{" "}
+    <strong style={{ color: appStyles.text }}>
+      Feet {series.boardLayout.feet || "-"} • Target{" "}
+      {series.boardLayout.target || "-"} • Breakpoint{" "}
+      {series.boardLayout.breakpoint || "-"}
+    </strong>
+  </div>
+)}
                   <div
                     style={{
                       display: "flex",
@@ -3381,6 +3416,12 @@ transitionNote: series.transitionNote || "",
  pinLayout: Array.isArray(series.pinLayout)
   ? series.pinLayout
   : [],
+
+boardLayout: {
+  feet: series.boardLayout?.feet || "",
+  target: series.boardLayout?.target || "",
+  breakpoint: series.boardLayout?.breakpoint || "",
+},
 });
 
                         setTimeout(() => {

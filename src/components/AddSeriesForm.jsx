@@ -1,5 +1,7 @@
 import React from "react";
 import PinLayoutSelector from "./PinLayoutSelector";
+import BoardLayoutSelector from "./BoardLayoutSelector";
+
 
 export default function AddSeriesForm({
   editingSeriesId,
@@ -99,6 +101,14 @@ export default function AddSeriesForm({
   buttonStyle={buttonStyle}
 />
 
+<BoardLayoutSelector
+  value={newSeries.boardLayout}
+  onChange={(layout) =>
+    setNewSeries((prev) => ({ ...prev, boardLayout: layout }))
+  }
+  appStyles={appStyles}
+  buttonStyle={buttonStyle}
+/>
         {newSeries.games.map((game, index) => (
           <input
             key={index}

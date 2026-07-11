@@ -1,6 +1,5 @@
 import React from "react";
-import PinLayoutSelector from "./PinLayoutSelector";
-import BoardLayoutSelector from "./BoardLayoutSelector";
+import LaneBoardSelector from "./LaneBoardSelector";
 
 
 export default function AddSeriesForm({
@@ -92,20 +91,21 @@ export default function AddSeriesForm({
           style={{ ...inputStyle, gridColumn: "1 / -1", resize: "vertical" }}
         />
 
-<PinLayoutSelector
-  value={newSeries.pinLayout}
-  onChange={(pins) =>
-    setNewSeries((prev) => ({ ...prev, pinLayout: pins }))
-  }
-  appStyles={appStyles}
-  buttonStyle={buttonStyle}
-/>
-
-<BoardLayoutSelector
+<LaneBoardSelector
   value={newSeries.boardLayout}
   onChange={(layout) =>
-    setNewSeries((prev) => ({ ...prev, boardLayout: layout }))
+    setNewSeries((prev) => ({
+      ...prev,
+      boardLayout: layout,
+    }))
   }
+pinLayout={newSeries.pinLayout}
+onPinLayoutChange={(pins) =>
+  setNewSeries((prev) => ({
+    ...prev,
+    pinLayout: pins,
+  }))
+}
   appStyles={appStyles}
   buttonStyle={buttonStyle}
 />

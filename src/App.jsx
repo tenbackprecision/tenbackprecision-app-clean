@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1127 - Board Layout Selector";
+const APP_VERSION = "v1128 - interactive SVG lane";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [

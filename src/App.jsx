@@ -433,6 +433,11 @@ const matchesYear =
   house: "",
   type: "Practice",
   games: ["", "", ""],
+  gameLayouts: [
+  { feet: "", target: "", breakpoint: "" },
+  { feet: "", target: "", breakpoint: "" },
+  { feet: "", target: "", breakpoint: "" },
+],
   oilPattern: "",
 
   primaryBall: "",
@@ -677,6 +682,11 @@ showToast("Receipt added.");
     house: "",
     type: "Practice",
     games: ["", "", ""],
+    gameLayouts: [
+  { feet: "", target: "", breakpoint: "" },
+  { feet: "", target: "", breakpoint: "" },
+  { feet: "", target: "", breakpoint: "" },
+],
     oilPattern: "",
 
     primaryBall: "",

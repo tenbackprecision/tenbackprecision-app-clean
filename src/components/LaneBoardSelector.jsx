@@ -17,10 +17,12 @@ export default function LaneBoardSelector({
   onChange,
   pinLayout = [],
   onPinLayoutChange,
+  showPins = true,
   appStyles,
   buttonStyle,
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+ 
+const [isOpen, setIsOpen] = useState(false);
   const [selecting, setSelecting] = useState("feet");
   const [hoveredBoard, setHoveredBoard] = useState(null);
 
@@ -90,15 +92,17 @@ function togglePin(pin) {
           <div style={{ color: appStyles.muted, marginTop: 4 }}>
             Feet {layout.feet || "-"} · Target {layout.target || "-"} ·
             Breakpoint {layout.breakpoint || "-"}
-<div
-  style={{
-    color: appStyles.muted,
-    marginTop: 2,
-    fontSize: 13,
-  }}
->
-  Pins: {pinSummary}
-</div>
+{showPins && (
+  <div
+    style={{
+      color: appStyles.muted,
+      marginTop: 2,
+      fontSize: 13,
+    }}
+  >
+    Pins: {pinSummary}
+  </div>
+)}
           </div>
         </div>
 
@@ -270,7 +274,9 @@ function togglePin(pin) {
                 FOUL LINE
               </text>
 
-              <g>
+              {showPins && (
+  <g>
+
   {[
     { pin: 7, x: 150, y: 75 },
     { pin: 8, x: 190, y: 75 },
@@ -339,6 +345,7 @@ function togglePin(pin) {
   );
 })}
 </g>
+)}
 
               {[5, 10, 15, 20, 25, 30, 35].map((board) => {
                 const x = getBoardX(board);
@@ -399,9 +406,9 @@ function togglePin(pin) {
   {hoveredBoard === board && (
     <rect
       x={x - BOARD_WIDTH / 2}
-      y="75"
+      y="65"
       width={BOARD_WIDTH}
-      height="50"
+      height="60"
       fill="rgba(56,189,248,0.22)"
       pointerEvents="none"
     />
@@ -494,17 +501,19 @@ function togglePin(pin) {
             >
               Clear Lane
             </button>
-		<button
-  		type="button"
-  		onClick={() => onPinLayoutChange([])}
-  		style={{
-    ...buttonStyle,
-    background: "rgba(255,255,255,0.12)",
-    color: appStyles.text,
-  }}
->
-  Clear Pins
-</button>
+{showPins && (
+  <button
+    type="button"
+    onClick={() => onPinLayoutChange([])}
+    style={{
+      ...buttonStyle,
+      background: "rgba(255,255,255,0.12)",
+      color: appStyles.text,
+    }}
+  >
+    Clear Pins
+  </button>
+)}
           </div>
         </div>
       ) : null}

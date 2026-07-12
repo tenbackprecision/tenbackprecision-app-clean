@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import LaneBoardSelector from "./LaneBoardSelector";
 
 
@@ -17,7 +17,12 @@ export default function AddSeriesForm({
   saveSeries,
   resetSeriesForm,
 }) {
-  return (
+
+  const [expandedGame, setExpandedGame] = useState(0);
+
+
+
+ return (
     <>
       <SectionTitle
         title={editingSeriesId ? "Editing Series" : "Add Series"}
@@ -91,57 +96,129 @@ export default function AddSeriesForm({
           style={{ ...inputStyle, gridColumn: "1 / -1", resize: "vertical" }}
         />
 
-<LaneBoardSelector
-  value={newSeries.boardLayout}
-  onChange={(layout) =>
-    setNewSeries((prev) => ({
-      ...prev,
-      boardLayout: layout,
-    }))
-  }
-pinLayout={newSeries.pinLayout}
-onPinLayoutChange={(pins) =>
-  setNewSeries((prev) => ({
-    ...prev,
-    pinLayout: pins,
-  }))
-}
-  appStyles={appStyles}
-  buttonStyle={buttonStyle}
-/>
-        {newSeries.games.map((game, index) => (
-          <input
-            key={index}
-            type="number"
-            placeholder={`Game ${index + 1}`}
-            value={game}
-            onChange={(e) => {
-              const updatedGames = [...newSeries.games];
-              updatedGames[index] = e.target.value;
-              setNewSeries((prev) => ({ ...prev, games: updatedGames }));
-            }}
-            style={inputStyle}
-          />
-        ))}
+{newSeries.games.map((game, index) => {
+  const gameLayout =
+    newSeries.gameLayouts?.[index] || {
+      feet: "",
+      target: "",
+      breakpoint: "",
+    };
 
+  return (
+    <div
+      key={index}
+      style={{
+        gridColumn: "1 / -1",
+        display: "grid",
+        gap: 12,
+        padding: 14,
+        border: `1px solid ${appStyles.cardBorder}`,
+        borderRadius: 18,
+        background: "rgba(255,255,255,0.04)",
+      }}
+    >
+      <div
+  onClick={() =>
+    setExpandedGame(expandedGame === index ? -1 : index)
+  }
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    cursor: "pointer",
+    fontSize: 18,
+    fontWeight: 900,
+    userSelect: "none",
+  }}
+>
+  <span>🎳 Game {index + 1}</span>
+
+  <span>
+    {expandedGame === index ? "▲" : "▼"}
+  </span>
+</div>
+{expandedGame === index && (
+  <>
+    <input
+      type="number"
+      placeholder={`Game ${index + 1} Score`}
+      value={game}
+      onChange={(e) => {
+        const updatedGames = [...newSeries.games];
+        updatedGames[index] = e.target.value;
+
+        setNewSeries((prev) => ({
+          ...prev,
+          games: updatedGames,
+        }));
+      }}
+      style={inputStyle}
+    />
+
+    <LaneBoardSelector
+      value={gameLayout}
+      onChange={(layout) =>
+        setNewSeries((prev) => {
+          const updatedLayouts = [...(prev.gameLayouts || [])];
+          updatedLayouts[index] = layout;
+
+          return {
+            ...prev,
+            gameLayouts: updatedLayouts,
+          };
+        })
+      }
+      pinLayout={[]}
+      onPinLayoutChange={() => {}}
+      showPins={false}
+      appStyles={appStyles}
+      buttonStyle={buttonStyle}
+    />
+  </>
+)}
+    </div>
+  );
+})}
         <button
           type="button"
-          onClick={() => setNewSeries((prev) => ({ ...prev, games: [...prev.games, ""] }))}
+          onClick={() =>
+  setNewSeries((prev) => ({
+    ...prev,
+    games: [...prev.games, ""],
+    gameLayouts: [
+      ...(prev.gameLayouts || []),
+      { feet: "", target: "", breakpoint: "" },
+    ],
+  }))
+}
           style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)", color: appStyles.text }}
         >
           + Add Game
         </button>
 
-        <button
-          type="button"
-          onClick={() => setNewSeries((prev) => ({
-            ...prev,
-            games: prev.games.length > 1 ? prev.games.slice(0, -1) : prev.games,
-          }))}
-          style={{ ...buttonStyle, background: "rgba(255,255,255,0.12)", color: appStyles.text }}
-        >
-          - Remove Game
-        </button>
+<button
+  type="button"
+  onClick={() =>
+    setNewSeries((prev) => ({
+      ...prev,
+      games:
+        prev.games.length > 1
+          ? prev.games.slice(0, -1)
+          : prev.games,
+      gameLayouts:
+        prev.games.length > 1
+          ? (prev.gameLayouts || []).slice(0, -1)
+          : prev.gameLayouts,
+    }))
+  }
+  style={{
+    ...buttonStyle,
+    background: "rgba(255,255,255,0.12)",
+    color: appStyles.text,
+  }}
+>
+  - Remove Game
+</button>
 
         <div
           style={{

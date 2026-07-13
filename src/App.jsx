@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1128 - interactive SVG lane";
+const APP_VERSION = "v1129 - Added collapsible Personal Records section";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -304,7 +304,7 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
-  const [showHouseAverages, setShowHouseAverages] = useState(true);
+  const [showHouseAverages, setShowHouseAverages] = useState(false);
   const [showAllHouseAverages, setShowAllHouseAverages] = useState(false);
   const [expandedSeriesScores, setExpandedSeriesScores] = useState({});
   const [showAllRecentSeries, setShowAllRecentSeries] = useState(false);
@@ -315,6 +315,11 @@ const [showAllIncome, setShowAllIncome] = useState(false);
 const [showAllReceipts, setShowAllReceipts] = useState(false);
 const [selectedSessionIntel, setSelectedSessionIntel] = useState(null);
 const [equipment, setEquipment] = useState([]);
+const [showEquipmentManager, setShowEquipmentManager] = useState(false);
+const [showQuickPerformanceStats, setShowQuickPerformanceStats] = useState(false);
+const [showPersonalRecords, setShowPersonalRecords] = useState(false);
+const [showAchievementTracker, setShowAchievementTracker] = useState(false);
+
 
 
 const [chartRange, setChartRange] = useState("12m");
@@ -2260,7 +2265,9 @@ if (activeView === "performance") {
               color: showHouseAverages ? "#06203a" : appStyles.text,
             }}
           >
-            {showHouseAverages ? "Hide House Avg" : "Show House Avg"}
+            {showHouseAverages
+  ? "Hide Performance Insights"
+  : "Show Performance Insights"}
           </button>
 
           <button
@@ -2406,10 +2413,44 @@ if (activeView === "performance") {
     marginBottom: 18,
   }}
 >
-  <SectionTitle
-    title="🏆 Personal Records"
-    subtitle="Your best bowling marks from the current filters"
-  />
+  <button
+  type="button"
+  onClick={() => setShowPersonalRecords((prev) => !prev)}
+  style={{
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    color: appStyles.text,
+    cursor: "pointer",
+    padding: 0,
+    marginBottom: showPersonalRecords ? 14 : 0,
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+    }}
+  >
+    <div style={{ textAlign: "left" }}>
+      <div style={{ fontSize: 24, fontWeight: 900 }}>
+        🏆 Personal Records
+      </div>
+
+      <div style={{ color: appStyles.muted, marginTop: 6 }}>
+        Your best bowling marks from the current filters
+      </div>
+    </div>
+
+    <div style={{ fontSize: 20 }}>
+      {showPersonalRecords ? "▲" : "▼"}
+    </div>
+  </div>
+</button>
+{showPersonalRecords && (
+  <>
+
 
   <div
     style={{
@@ -2452,7 +2493,10 @@ if (activeView === "performance") {
       value={String(personalRecords.games200)}
       subValue="Games at 200 or better"
     />
-  </div>
+    </div>
+
+  </>
+)}
 </div>
 
 <div
@@ -2856,11 +2900,44 @@ if (activeView === "performance") {
     marginBottom: 18,
   }}
 >
-  <SectionTitle
-    title="🎒 Equipment Manager"
-    subtitle="Build your digital bowling bag"
-  />
+  <button
+  type="button"
+  onClick={() => setShowEquipmentManager((prev) => !prev)}
+  style={{
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    color: appStyles.text,
+    cursor: "pointer",
+    padding: 0,
+    marginBottom: showEquipmentManager ? 14 : 0,
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+    }}
+  >
+    <div style={{ textAlign: "left" }}>
+      <div style={{ fontSize: 24, fontWeight: 900 }}>
+        🎒 Equipment Manager
+      </div>
+      <div style={{ color: appStyles.muted, marginTop: 6 }}>
+        Build your digital bowling bag
+      </div>
+    </div>
 
+    <div style={{ fontSize: 20 }}>
+      {showEquipmentManager ? "▲" : "▼"}
+    </div>
+  </div>
+</button>
+
+{showEquipmentManager && (
+  <>
   <div
     style={{
       display: "grid",
@@ -3092,6 +3169,8 @@ if (activeView === "performance") {
       ))
     )}
   </div>
+ </>
+)}
 </div>
 
 <div

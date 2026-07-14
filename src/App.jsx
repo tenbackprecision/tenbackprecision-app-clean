@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1129 - Added collapsible Personal Records section";
+const APP_VERSION = "v1130 - Added collapsible Achievement Tracker";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -1618,33 +1618,54 @@ const averageProgressionData = useMemo(() => {
   const months = {};
 
   filteredSeries.forEach((series) => {
-    const key = new Date(series.date).toLocaleDateString("en-US", {
+    const date = new Date(series.date);
+
+    if (Number.isNaN(date.getTime())) return;
+
+    const sortKey = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+    const label = date.toLocaleDateString("en-US", {
       month: "short",
       year: "2-digit",
     });
 
-    if (!months[key]) {
-      months[key] = {
-        month: key,
+    if (!months[sortKey]) {
+      months[sortKey] = {
+        sortKey,
+        month: label,
         totalPins: 0,
         games: 0,
+        series: 0,
       };
     }
 
+    months[sortKey].series += 1;
+
     (series.games || []).forEach((game) => {
-      months[key].totalPins += Number(game || 0);
-      months[key].games += 1;
+      const score = Number(game || 0);
+
+      if (score > 0) {
+        months[sortKey].totalPins += score;
+        months[sortKey].games += 1;
+      }
     });
   });
 
-  return Object.values(months).map((m) => ({
-    month: m.month,
-    average:
-      m.games > 0
-        ? Number((m.totalPins / m.games).toFixed(1))
-        : 0,
-  }));
+  return Object.values(months)
+    .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+    .map((m) => ({
+      month: m.month,
+      average:
+        m.games > 0
+          ? Number((m.totalPins / m.games).toFixed(1))
+          : 0,
+      games: m.games,
+      series: m.series,
+    }));
 }, [filteredSeries]);
+
 
 const thisMonthSummary = useMemo(() => {
   const now = new Date();
@@ -2341,10 +2362,55 @@ if (activeView === "performance") {
     marginBottom: 18,
   }}
 >
-  <SectionTitle
-    title="🏅 Achievement Tracker"
-    subtitle="Milestones unlocked from your bowling history"
-  />
+  <button
+  type="button"
+  onClick={() => setShowAchievementTracker((prev) => !prev)}
+  style={{
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    color: appStyles.text,
+    cursor: "pointer",
+    padding: 0,
+    marginBottom: showAchievementTracker ? 24 : 0,
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+    }}
+  >
+    <div
+  style={{
+    flex: 1,
+    textAlign: "center",
+  }}
+>
+      <div style={{ fontSize: 24, fontWeight: 900 }}>
+        🏅 Achievement Tracker
+      </div>
+
+      <div style={{ color: appStyles.muted, marginTop: 6 }}>
+        Milestones unlocked from your bowling history
+      </div>
+    </div>
+
+    <div
+  style={{
+    fontSize: 20,
+    width: 32,
+    textAlign: "right",
+  }}
+>
+      {showAchievementTracker ? "▲" : "▼"}
+    </div>
+  </div>
+</button>
+{showAchievementTracker && (
+  <>
 
   <div
     style={{
@@ -2395,10 +2461,12 @@ if (activeView === "performance") {
           }}
         >
           {a.detail}
-        </div>
-      </div>
+         </div>
+       </div>
     ))}
   </div>
+</>
+   )}
 </div>
 
 <div
@@ -2423,7 +2491,7 @@ if (activeView === "performance") {
     color: appStyles.text,
     cursor: "pointer",
     padding: 0,
-    marginBottom: showPersonalRecords ? 14 : 0,
+    marginBottom: showPersonalRecords ? 24 : 0,
   }}
 >
   <div
@@ -2433,7 +2501,12 @@ if (activeView === "performance") {
       alignItems: "center",
     }}
   >
-    <div style={{ textAlign: "left" }}>
+    <div
+  style={{
+    flex: 1,
+    textAlign: "center",
+  }}
+>
       <div style={{ fontSize: 24, fontWeight: 900 }}>
         🏆 Personal Records
       </div>
@@ -2443,7 +2516,13 @@ if (activeView === "performance") {
       </div>
     </div>
 
-    <div style={{ fontSize: 20 }}>
+    <div
+  style={{
+    fontSize: 20,
+    width: 32,
+    textAlign: "right",
+  }}
+>
       {showPersonalRecords ? "▲" : "▼"}
     </div>
   </div>

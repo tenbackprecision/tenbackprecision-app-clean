@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1130 - Added collapsible Achievement Tracker";
+const APP_VERSION = "v1130 - Refined dashboard layout and collapsible stat sections";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -2989,7 +2989,7 @@ if (activeView === "performance") {
     color: appStyles.text,
     cursor: "pointer",
     padding: 0,
-    marginBottom: showEquipmentManager ? 14 : 0,
+    marginBottom: showEquipmentManager ? 24 : 0,
   }}
 >
   <div
@@ -3000,7 +3000,13 @@ if (activeView === "performance") {
       gap: 12,
     }}
   >
-    <div style={{ textAlign: "left" }}>
+    <div
+  style={{
+    flex: 1,
+    textAlign: "center",
+    paddingLeft: 26,
+  }}
+>
       <div style={{ fontSize: 24, fontWeight: 900 }}>
         🎒 Equipment Manager
       </div>

@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1130 - Refined dashboard layout and collapsible stat sections";
+const APP_VERSION = "v1131 - Floating action button";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -319,7 +319,8 @@ const [showEquipmentManager, setShowEquipmentManager] = useState(false);
 const [showQuickPerformanceStats, setShowQuickPerformanceStats] = useState(false);
 const [showPersonalRecords, setShowPersonalRecords] = useState(false);
 const [showAchievementTracker, setShowAchievementTracker] = useState(false);
-
+const [showBowlrImport, setShowBowlrImport] = useState(false);
+const [showFabMenu, setShowFabMenu] = useState(false);
 
 
 const [chartRange, setChartRange] = useState("12m");
@@ -2217,6 +2218,80 @@ const pageSubtitleStyle = {
     );
   }
 
+const renderFab = () => (
+  <>
+{showFabMenu && (
+  <button
+    type="button"
+    onClick={() => {
+      setActiveView("performance");
+      setShowFabMenu(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }}
+    style={{
+      position: "fixed",
+      right: isPhone ? 20 : 30,
+      bottom: isPhone ? 128 : 138,
+      width: 42,
+      height: 42,
+      borderRadius: "50%",
+      border: `1px solid ${appStyles.cardBorder}`,
+      background: appStyles.card,
+      color: appStyles.text,
+      fontSize: 18,
+      cursor: "pointer",
+      zIndex: 44,
+      transition: "all .2s ease",
+    }}
+  >
+    📊
+  </button>
+)}
+
+<button
+  type="button"
+  aria-label="Go to New Series"
+  title="New Series"
+  onClick={() => {
+  setShowFabMenu((prev) => !prev);
+}}
+
+
+
+onMouseEnter={(e) => {
+  e.currentTarget.style.transform = "scale(1.08)";
+}}
+
+onMouseLeave={(e) => {
+  e.currentTarget.style.transform = "scale(1)";
+}}
+
+  style={{
+    position: "fixed",
+    right: isPhone ? 18 : 28,
+    bottom: isPhone ? 18 : 28,
+    width: 48,
+    height: 48,
+    borderRadius: "50%",
+    border: `1px solid ${appStyles.cardBorder}`,
+    background: appStyles.accent,
+    color: "#1a1633",
+    fontSize: 22,
+    cursor: "pointer",
+    transition: "transform 0.2s ease",
+    zIndex: 45,
+    boxShadow: "0 12px 30px rgba(0,0,0,0.38)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  }}
+>
+  🎳
+</button>
+</>
+);
+
+
 if (activeView === "performance") {
   const sortedSeries = [...filteredSeries].sort((a, b) =>
     String(b.date).localeCompare(String(a.date))
@@ -2601,7 +2676,34 @@ if (activeView === "performance") {
         <CartesianGrid strokeOpacity={0.2} />
         <XAxis dataKey="month" />
         <YAxis />
-        <Tooltip />
+ <Tooltip
+  content={({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+
+    const data = payload[0]?.payload;
+
+    return (
+      <div
+        style={{
+          background: "#0f172a",
+          border: `1px solid ${appStyles.cardBorder}`,
+          borderRadius: 14,
+          padding: "12px 14px",
+          color: appStyles.text,
+          boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
+        }}
+      >
+        <div style={{ fontWeight: 900, marginBottom: 8 }}>
+          📅 {label}
+        </div>
+
+        <div>🎳 Average: {data?.average ?? 0}</div>
+        <div>🎯 Games: {data?.games ?? 0}</div>
+        <div>📚 Series: {data?.series ?? 0}</div>
+      </div>
+    );
+  }}
+/>       
         <Legend />
 
         <Line
@@ -3270,10 +3372,50 @@ if (activeView === "performance") {
     marginBottom: 18,
   }}
 >
-  <SectionTitle
-    title="📥 Bowlr Import Preview"
-    subtitle="Scan your Bowlr export before importing"
-  />
+  <button
+  type="button"
+  onClick={() => setShowBowlrImport((prev) => !prev)}
+  style={{
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    color: appStyles.text,
+    cursor: "pointer",
+    padding: 0,
+    marginBottom: showBowlrImport ? 24 : 0,
+  }}
+>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+    }}
+  >
+    <div
+      style={{
+        flex: 1,
+        textAlign: "center",
+        paddingLeft: 36,
+      }}
+    >
+      <div style={{ fontSize: 24, fontWeight: 900 }}>
+        📥 Bowlr Import Preview
+      </div>
+
+      <div style={{ color: appStyles.muted, marginTop: 6 }}>
+        Scan your Bowlr export before importing
+      </div>
+    </div>
+
+    <div style={{ fontSize: 20 }}>
+      {showBowlrImport ? "▲" : "▼"}
+    </div>
+  </div>
+</button>
+{showBowlrImport && (
+  <>
 
   <input
     ref={bowlrImportRef}
@@ -3369,9 +3511,13 @@ if (activeView === "performance") {
     >
       Delete Previous Bowlr Import
     </button>
-  </div>
+    </div>
 ) : null}
+
+  </>
+)}
 </div>
+
           <SectionTitle
             title="Recent Series"
             subtitle="Latest saved house and score data"
@@ -3673,6 +3819,7 @@ boardLayout: {
           {toast.message}
         </div>
       ) : null}
+      {renderFab()}
     </div>
   );
 }

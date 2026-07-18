@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1131 - Floating action button";
+const APP_VERSION = "v1132 - Default event type";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -321,7 +321,18 @@ const [showPersonalRecords, setShowPersonalRecords] = useState(false);
 const [showAchievementTracker, setShowAchievementTracker] = useState(false);
 const [showBowlrImport, setShowBowlrImport] = useState(false);
 const [showFabMenu, setShowFabMenu] = useState(false);
-
+const [defaultHouse, setDefaultHouse] = useState(
+  localStorage.getItem("tenBackDefaultHouse") || ""
+);
+const [defaultPrimaryBall, setDefaultPrimaryBall] = useState(
+  localStorage.getItem("tenBackDefaultPrimaryBall") || ""
+);
+const [defaultSecondaryBall, setDefaultSecondaryBall] = useState(
+  localStorage.getItem("tenBackDefaultSecondaryBall") || ""
+);
+const [defaultEventType, setDefaultEventType] = useState(
+  localStorage.getItem("tenBackDefaultEventType") || "Practice"
+);
 
 const [chartRange, setChartRange] = useState("12m");
   const [filterMonth, setFilterMonth] = useState("all");
@@ -436,7 +447,7 @@ const matchesYear =
 
   const [newSeries, setNewSeries] = useState({
   date: todayString(),
-  house: "",
+  house: defaultHouse,
   type: "Practice",
   games: ["", "", ""],
   gameLayouts: [
@@ -446,7 +457,7 @@ const matchesYear =
 ],
   oilPattern: "",
 
-  primaryBall: "",
+  primaryBall: defaultPrimaryBall,
   primaryBallId: "",
 
   secondaryBall: "",
@@ -465,6 +476,37 @@ boardLayout: {
   breakpoint: "",
 },
 });
+useEffect(() => {
+  if (!defaultPrimaryBall || !equipment.length) return;
+
+  const defaultBall = equipment.find(
+    (ball) => ball.name === defaultPrimaryBall
+  );
+
+  if (!defaultBall) return;
+
+  setNewSeries((prev) => ({
+    ...prev,
+    primaryBall: defaultBall.name,
+    primaryBallId: defaultBall.id,
+  }));
+}, [defaultPrimaryBall, equipment]);
+  
+  useEffect(() => {
+  if (!defaultSecondaryBall || !equipment.length) return;
+
+  const defaultBall = equipment.find(
+    (ball) => ball.name === defaultSecondaryBall
+  );
+
+  if (!defaultBall) return;
+
+  setNewSeries((prev) => ({
+    ...prev,
+    secondaryBall: defaultBall.name,
+    secondaryBallId: defaultBall.id,
+  }));
+}, [defaultSecondaryBall, equipment]);
 
   const importFileRef = useRef(null);
 
@@ -685,7 +727,7 @@ showToast("Receipt added.");
   function resetSeriesForm() {
   setNewSeries({
     date: todayString(),
-    house: "",
+    house: defaultHouse,
     type: "Practice",
     games: ["", "", ""],
     gameLayouts: [
@@ -695,7 +737,7 @@ showToast("Receipt added.");
 ],
     oilPattern: "",
 
-    primaryBall: "",
+    primaryBall: defaultPrimaryBall,
     primaryBallId: "",
 
     secondaryBall: "",
@@ -2220,14 +2262,145 @@ const pageSubtitleStyle = {
 
 const renderFab = () => (
   <>
+{showFabMenu && activeView !== "dashboard" && (
+  <button
+    type="button"
+    aria-label="Go to Dashboard"
+    title="Dashboard"
+    onClick={() => {
+      setActiveView("dashboard");
+      setShowFabMenu(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }}
+    style={{
+      position: "fixed",
+      right: isPhone ? 20 : 30,
+      bottom: isPhone ? 183 : 193,
+      width: 42,
+      height: 42,
+      borderRadius: "50%",
+      border: `1px solid ${appStyles.cardBorder}`,
+      background: appStyles.card,
+      color: appStyles.text,
+      fontSize: 18,
+      cursor: "pointer",
+      zIndex: 44,
+      transition: "all .2s ease",
+    }}
+  >
+    🏠
+  </button>
+)}
+{showFabMenu && (
+  <button
+    type="button"
+    aria-label="Settings"
+    title="Settings"
+    onClick={() => {
+  setActiveView("settings");
+  setShowFabMenu(false);
+}}
+    style={{
+      position: "fixed",
+      right: isPhone ? 20 : 30,
+      bottom: isPhone ? 348 : 358,
+      width: 42,
+      height: 42,
+      borderRadius: "50%",
+      border: `1px solid ${appStyles.cardBorder}`,
+      background: appStyles.card,
+      color: appStyles.text,
+      fontSize: 18,
+      cursor: "pointer",
+      zIndex: 44,
+      transition: "all .2s ease",
+    }}
+  >
+    ⚙️
+  </button>
+)}
+{showFabMenu && (
+  <button
+    type="button"
+    aria-label="Add New Series"
+    title="New Series"
+    onClick={() => {
+      setActiveView("performance");
+      setShowFabMenu(false);
+
+      setTimeout(() => {
+        addSeriesRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 100);
+    }}
+    style={{
+      position: "fixed",
+      right: isPhone ? 20 : 30,
+      bottom: isPhone ? 238 : 248,
+      width: 42,
+      height: 42,
+      borderRadius: "50%",
+      border: `1px solid ${appStyles.cardBorder}`,
+      background: appStyles.card,
+      color: appStyles.text,
+      fontSize: 18,
+      cursor: "pointer",
+      zIndex: 44,
+      transition: "all .2s ease",
+    }}
+  >
+    ➕
+  </button>
+)}
+{showFabMenu && (
+  <button
+    type="button"
+    aria-label="Back to Top"
+    title="Top"
+    onClick={() => {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+      setShowFabMenu(false);
+    }}
+    style={{
+      position: "fixed",
+      right: isPhone ? 20 : 30,
+      bottom: isPhone ? 293 : 303,
+      width: 42,
+      height: 42,
+      borderRadius: "50%",
+      border: `1px solid ${appStyles.cardBorder}`,
+      background: appStyles.card,
+      color: appStyles.text,
+      fontSize: 18,
+      cursor: "pointer",
+      zIndex: 44,
+      transition: "all .2s ease",
+    }}
+  >
+    ⬆️
+  </button>
+)}
 {showFabMenu && (
   <button
     type="button"
     onClick={() => {
-      setActiveView("performance");
-      setShowFabMenu(false);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }}
+  if (activeView !== "performance") {
+    setActiveView("performance");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else {
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: "smooth",
+    });
+  }
+
+  setShowFabMenu(false);
+}}
     style={{
       position: "fixed",
       right: isPhone ? 20 : 30,
@@ -2291,6 +2464,145 @@ onMouseLeave={(e) => {
 </>
 );
 
+if (activeView === "settings") {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: appStyles.background,
+        color: appStyles.text,
+        padding: 20,
+        fontFamily: "Inter, Arial, sans-serif",
+      }}
+    >
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={pageTitleStyle}>⚙️ Settings</div>
+        <div style={pageSubtitleStyle}>
+          Customize Ten Back Precision
+        </div>
+      </div>
+
+      <div
+        style={{
+          maxWidth: 700,
+          margin: "0 auto",
+          background: appStyles.card,
+          border: `1px solid ${appStyles.cardBorder}`,
+          borderRadius: 24,
+          padding: 24,
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>Coming Soon</h2>
+
+        <p>✅ Theme Settings</p>
+        <p>✅ Data Import / Export</p>
+        <p>✅ Backup & Restore</p>
+        <div style={{ marginTop: 18 }}>
+  <div
+    style={{
+      fontWeight: 700,
+      marginBottom: 8,
+      color: appStyles.text,
+    }}
+  >
+    🎳 Default Bowling Center
+  </div>
+
+  <input
+    type="text"
+    placeholder="Enter your home bowling center..."
+    value={defaultHouse}
+    onChange={(e) => {
+      setDefaultHouse(e.target.value);
+      localStorage.setItem(
+        "tenBackDefaultHouse",
+        e.target.value
+      );
+    }}
+    style={inputStyle}
+  />
+</div>
+<div style={{ marginTop: 18 }}>
+  <div
+    style={{
+      fontWeight: 700,
+      marginBottom: 8,
+      color: appStyles.text,
+    }}
+  >
+    🎳 Default Primary Ball
+  </div>
+
+  <select
+    value={defaultPrimaryBall}
+    onChange={(e) => {
+      setDefaultPrimaryBall(e.target.value);
+      localStorage.setItem(
+        "tenBackDefaultPrimaryBall",
+        e.target.value
+      );
+    }}
+    style={inputStyle}
+  >
+    <option value="">Select a ball...</option>
+
+    {equipmentOptions.map((ball) => (
+      <option key={ball.id} value={ball.name}>
+        {ball.name}
+      </option>
+    ))}
+  </select>
+</div>
+<div style={{ marginTop: 18 }}>
+  <div
+    style={{
+      fontWeight: 700,
+      marginBottom: 8,
+      color: appStyles.text,
+    }}
+  >
+    🎳 Default Secondary Ball
+  </div>
+
+  <select
+    value={defaultSecondaryBall}
+    onChange={(e) => {
+      setDefaultSecondaryBall(e.target.value);
+      localStorage.setItem(
+        "tenBackDefaultSecondaryBall",
+        e.target.value
+      );
+    }}
+    style={inputStyle}
+  >
+    <option value="">Select a ball...</option>
+
+    {equipmentOptions.map((ball) => (
+      <option key={ball.id} value={ball.name}>
+        {ball.name}
+      </option>
+    ))}
+  </select>
+</div>
+        <p>✅ App Preferences</p>
+
+        <button
+          onClick={() => setActiveView("dashboard")}
+          style={{
+            ...buttonStyle,
+            marginTop: 20,
+            background: appStyles.accent,
+            color: "#1a1633",
+          }}
+        >
+          Return to Dashboard
+        </button>
+      </div>
+
+      {renderFab()}
+    </div>
+  );
+}
 
 if (activeView === "performance") {
   const sortedSeries = [...filteredSeries].sort((a, b) =>
@@ -4067,6 +4379,7 @@ boardLayout: {
             />
           </div>
         ) : null}
+      {renderFab()}
       </div>
     );
   }
@@ -5204,6 +5517,7 @@ resize: "none",
           Syncing data...
         </div>
       ) : null}
+     {renderFab()}
     </div>
   );
 }

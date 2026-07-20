@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1132 - Default event type";
+const APP_VERSION = "v1133";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -333,6 +333,9 @@ const [defaultSecondaryBall, setDefaultSecondaryBall] = useState(
 const [defaultEventType, setDefaultEventType] = useState(
   localStorage.getItem("tenBackDefaultEventType") || "Practice"
 );
+const [defaultOilPattern, setDefaultOilPattern] = useState(
+  localStorage.getItem("tenBackDefaultOilPattern") || ""
+);
 
 const [chartRange, setChartRange] = useState("12m");
   const [filterMonth, setFilterMonth] = useState("all");
@@ -448,14 +451,14 @@ const matchesYear =
   const [newSeries, setNewSeries] = useState({
   date: todayString(),
   house: defaultHouse,
-  type: "Practice",
+  type: defaultEventType,
   games: ["", "", ""],
   gameLayouts: [
   { feet: "", target: "", breakpoint: "" },
   { feet: "", target: "", breakpoint: "" },
   { feet: "", target: "", breakpoint: "" },
 ],
-  oilPattern: "",
+  oilPattern: defaultOilPattern,
 
   primaryBall: defaultPrimaryBall,
   primaryBallId: "",
@@ -492,8 +495,17 @@ useEffect(() => {
   }));
 }, [defaultPrimaryBall, equipment]);
   
-  useEffect(() => {
-  if (!defaultSecondaryBall || !equipment.length) return;
+   useEffect(() => {
+  if (!defaultSecondaryBall) {
+    setNewSeries((prev) => ({
+      ...prev,
+      secondaryBall: "",
+      secondaryBallId: "",
+    }));
+    return;
+  }
+
+  if (!equipment.length) return;
 
   const defaultBall = equipment.find(
     (ball) => ball.name === defaultSecondaryBall
@@ -507,6 +519,19 @@ useEffect(() => {
     secondaryBallId: defaultBall.id,
   }));
 }, [defaultSecondaryBall, equipment]);
+useEffect(() => {
+  setNewSeries((prev) => ({
+    ...prev,
+    type: defaultEventType,
+  }));
+}, [defaultEventType]);
+
+useEffect(() => {
+  setNewSeries((prev) => ({
+    ...prev,
+    oilPattern: defaultOilPattern,
+  }));
+}, [defaultOilPattern]);
 
   const importFileRef = useRef(null);
 
@@ -728,20 +753,21 @@ showToast("Receipt added.");
   setNewSeries({
     date: todayString(),
     house: defaultHouse,
-    type: "Practice",
+    type: defaultEventType,
     games: ["", "", ""],
     gameLayouts: [
   { feet: "", target: "", breakpoint: "" },
   { feet: "", target: "", breakpoint: "" },
   { feet: "", target: "", breakpoint: "" },
 ],
-    oilPattern: "",
+    oilPattern: defaultOilPattern,
 
     primaryBall: defaultPrimaryBall,
     primaryBallId: "",
 
-    secondaryBall: "",
-    secondaryBallId: "",
+    secondaryBall: defaultSecondaryBall,
+    secondaryBallId:
+  equipment.find((ball) => ball.name === defaultSecondaryBall)?.id || "",
 
     feet: "",
     target: "",
@@ -2584,6 +2610,62 @@ if (activeView === "settings") {
     ))}
   </select>
 </div>
+<div style={{ marginTop: 18 }}>
+  <div
+    style={{
+      fontWeight: 700,
+      marginBottom: 8,
+      color: appStyles.text,
+    }}
+  >
+    🏆 Default Event Type
+  </div>
+
+  <select
+    value={defaultEventType}
+    onChange={(e) => {
+      setDefaultEventType(e.target.value);
+      localStorage.setItem(
+        "tenBackDefaultEventType",
+        e.target.value
+      );
+    }}
+    style={inputStyle}
+  >
+    {performanceTypes.map((type) => (
+      <option key={type} value={type}>
+        {type}
+      </option>
+    ))}
+  </select>
+</div>
+
+<div style={{ marginTop: 18 }}>
+  <div
+    style={{
+      fontWeight: 700,
+      marginBottom: 8,
+      color: appStyles.text,
+    }}
+  >
+    🛢️ Default Oil Pattern
+  </div>
+
+  <input
+    type="text"
+    value={defaultOilPattern}
+    onChange={(e) => {
+      setDefaultOilPattern(e.target.value);
+      localStorage.setItem(
+        "tenBackDefaultOilPattern",
+        e.target.value
+      );
+    }}
+    placeholder="House Shot, PBA Scorpion, etc."
+    style={inputStyle}
+  />
+</div>
+
         <p>✅ App Preferences</p>
 
         <button

@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1133";
+const APP_VERSION = "v1134";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -2686,6 +2686,126 @@ if (activeView === "settings") {
   );
 }
 
+if (activeView === "analytics") {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: appStyles.background,
+        color: appStyles.text,
+        padding: 20,
+        fontFamily: "Inter, Arial, sans-serif",
+      }}
+    >
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={pageTitleStyle}>📈 Analytics</div>
+
+        <div style={pageSubtitleStyle}>
+          Trends, records, achievements, and bowling performance insights.
+        </div>
+      </div>
+
+<div
+  style={{
+    maxWidth: 1100,
+    margin: "0 auto",
+  }}
+>
+  <SectionTitle
+    title="Performance Summary"
+    subtitle="Your bowling numbers under the current filters."
+  />
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : "repeat(auto-fit, minmax(180px, 1fr))",
+      gap: 14,
+    }}
+  >
+    <StatCard
+      label="Overall Average"
+      value={performanceSummary.overallAverage}
+      subValue={`${performanceSummary.totalSeries} series`}
+    />
+
+    <StatCard
+      label="High Game"
+      value={performanceSummary.bestGame}
+      subValue="Best single game"
+    />
+
+    <StatCard
+      label="Best Series"
+      value={performanceSummary.bestSeries}
+      subValue="Highest series total"
+    />
+
+    <StatCard
+      label="Recent Form"
+      value={performanceSummary.last5Average}
+      subValue={performanceSummary.trend}
+      valueColor={performanceSummary.trendColor}
+    />
+  </div>
+
+<div style={{ marginTop: 28 }}>
+  <SectionTitle
+    title="Personal Records"
+    subtitle="Your best performances so far."
+  />
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : "repeat(auto-fit, minmax(180px, 1fr))",
+      gap: 14,
+    }}
+  >
+    <StatCard
+      label="High Game"
+      value={personalRecords.highGame}
+      subValue={`${personalRecords.games200} games over 200`}
+    />
+
+    <StatCard
+      label="High Series"
+      value={personalRecords.highSeries}
+      subValue={`${personalRecords.totalSeries} series`}
+    />
+
+    <StatCard
+      label="Lifetime Average"
+      value={personalRecords.average}
+      subValue={`${personalRecords.totalGames} games`}
+    />
+  </div>
+</div>
+
+  <div style={{ textAlign: "center", marginTop: 20 }}>
+    <button
+      type="button"
+      onClick={() => setActiveView("performance")}
+      style={{
+        ...buttonStyle,
+        background: appStyles.accent,
+        color: "#1a1633",
+      }}
+    >
+      Return to Performance
+    </button>
+  </div>
+</div>
+
+      {renderFab()}
+    </div>
+  );
+}
+
 if (activeView === "performance") {
   const sortedSeries = [...filteredSeries].sort((a, b) =>
     String(b.date).localeCompare(String(a.date))
@@ -4529,6 +4649,18 @@ return (
     >
       Performance
     </button>
+
+<button
+  type="button"
+  onClick={() => setActiveView("analytics")}
+  style={{
+    ...buttonStyle,
+    background: "rgba(255,255,255,0.12)",
+    color: appStyles.text,
+  }}
+>
+  Analytics
+</button>
 
     <button
       type="button"

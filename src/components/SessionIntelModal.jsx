@@ -24,6 +24,9 @@ export default function SessionIntelModal({
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 520,
+	  maxHeight: "90vh",
+	  display: "flex",
+	  flexDirection: "column",
           maxWidth: "100%",
           background: appStyles.card,
           border: `1px solid ${appStyles.cardBorder}`,
@@ -43,7 +46,16 @@ export default function SessionIntelModal({
           </div>
         </div>
 
-        <div style={{ display: "grid", gap: 10 }}>
+        <div
+  style={{
+    display: "grid",
+    gap: 10,
+    overflowY: "auto",
+    flex: 1,
+    paddingRight: 8,
+    minHeight: 0,
+  }}
+>
 {[
   ["Event Type", selectedSessionIntel.type || selectedSessionIntel.event],
   [
@@ -179,10 +191,6 @@ export default function SessionIntelModal({
   })(),
 ],
 [
-  "Clean Games",
-  selectedSessionIntel.cleanGames ?? "—",
-],
-[
   "Focus Next Session",
   (() => {
     const avg = Number(selectedSessionIntel.average || 0);
@@ -199,12 +207,6 @@ export default function SessionIntelModal({
   `${(selectedSessionIntel.games || []).filter((g) => Number(g) > 0).length} Games`,
 ],
 [
-  "Lane Play",
-  selectedSessionIntel.feet && selectedSessionIntel.target
-    ? `${selectedSessionIntel.feet} → ${selectedSessionIntel.target}`
-    : "—",
-],
-[
   "Ball Strategy",
   selectedSessionIntel.secondaryBall
     ? `${selectedSessionIntel.primaryBall} → ${selectedSessionIntel.secondaryBall}`
@@ -214,12 +216,6 @@ export default function SessionIntelModal({
   "Equipment Notes",
   selectedSessionIntel.surface
     ? `${selectedSessionIntel.primaryBall || "Ball"} (${selectedSessionIntel.surface})`
-    : "—",
-],
-[
-  "Release",
-  selectedSessionIntel.breakpoint
-    ? `${selectedSessionIntel.target || "—"} → ${selectedSessionIntel.breakpoint}`
     : "—",
 ],
   ["Oil Pattern", selectedSessionIntel.oilPattern],

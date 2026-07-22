@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1134";
+const APP_VERSION = "v1135";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [

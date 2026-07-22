@@ -1735,6 +1735,36 @@ const averageProgressionData = useMemo(() => {
     }));
 }, [filteredSeries]);
 
+const rollingAverageData = useMemo(() => {
+  const orderedSeries = [...filteredSeries]
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  const result = [];
+
+  for (let i = 0; i < orderedSeries.length; i++) {
+    const start = Math.max(0, i - 9);
+    const windowSeries = orderedSeries.slice(start, i + 1);
+
+    const games = windowSeries.flatMap((s) =>
+      (s.games || [])
+        .map(Number)
+        .filter((g) => g > 0)
+    );
+
+    if (!games.length) continue;
+
+    const avg =
+      games.reduce((sum, g) => sum + g, 0) /
+      games.length;
+
+    result.push({
+      date: orderedSeries[i].date,
+      average: Number(avg.toFixed(1)),
+    });
+  }
+
+  return result;
+}, [filteredSeries]);
 
 const thisMonthSummary = useMemo(() => {
   const now = new Date();
@@ -2711,6 +2741,45 @@ if (activeView === "analytics") {
     margin: "0 auto",
   }}
 >
+
+<div
+  style={{
+    marginBottom: 28,
+    padding: 18,
+    borderRadius: 20,
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    textAlign: "center",
+    boxShadow: appStyles.glowBlue,
+  }}
+>
+  <div
+    style={{
+      fontSize: 28,
+      fontWeight: 900,
+      marginBottom: 8,
+    }}
+  >
+    📊 Analytics Dashboard
+  </div>
+
+  <div style={{ color: appStyles.muted }}>
+    Your complete bowling performance, trends, records, and insights in one place.
+  </div>
+</div>
+
+<details open style={{ marginBottom: 28 }}>
+  <summary
+    style={{
+      cursor: "pointer",
+      fontSize: 22,
+      fontWeight: 900,
+      color: appStyles.accent,
+      marginBottom: 16,
+    }}
+  >
+    🎳 Performance Summary
+  </summary>
   <SectionTitle
     title="Performance Summary"
     subtitle="Your bowling numbers under the current filters."
@@ -2750,6 +2819,7 @@ if (activeView === "analytics") {
       valueColor={performanceSummary.trendColor}
     />
   </div>
+</details>
 
 <div style={{ marginTop: 28 }}>
   <SectionTitle
@@ -2786,6 +2856,50 @@ if (activeView === "analytics") {
   </div>
 </div>
 
+<div style={{ marginTop: 30 }}>
+  <SectionTitle
+    title="Average Progression"
+    subtitle="Track your scoring average over time."
+  />
+
+  <div
+    style={{
+      height: 320,
+      background: appStyles.card,
+      border: `1px solid ${appStyles.cardBorder}`,
+      borderRadius: 24,
+      padding: 20,
+    }}
+  >
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={averageProgressionData}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#3b4866" />
+
+        <XAxis
+          dataKey="month"
+          stroke={appStyles.muted}
+        />
+
+        <YAxis
+          stroke={appStyles.muted}
+          domain={["dataMin-5", "dataMax+5"]}
+        />
+
+        <Tooltip />
+
+        <Line
+          type="monotone"
+          dataKey="average"
+          stroke={appStyles.accent}
+          strokeWidth={4}
+          dot={{ r: 5 }}
+          activeDot={{ r: 8 }}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</div>
+
   <div style={{ textAlign: "center", marginTop: 20 }}>
     <button
       type="button"
@@ -2800,6 +2914,7 @@ if (activeView === "analytics") {
     </button>
   </div>
 </div>
+
 
       {renderFab()}
     </div>
@@ -3190,34 +3305,36 @@ if (activeView === "performance") {
         <CartesianGrid strokeOpacity={0.2} />
         <XAxis dataKey="month" />
         <YAxis />
- <Tooltip
-  content={({ active, payload, label }) => {
-    if (!active || !payload?.length) return null;
 
-    const data = payload[0]?.payload;
+        <Tooltip
+          content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
 
-    return (
-      <div
-        style={{
-          background: "#0f172a",
-          border: `1px solid ${appStyles.cardBorder}`,
-          borderRadius: 14,
-          padding: "12px 14px",
-          color: appStyles.text,
-          boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
-        }}
-      >
-        <div style={{ fontWeight: 900, marginBottom: 8 }}>
-          📅 {label}
-        </div>
+            const data = payload[0]?.payload;
 
-        <div>🎳 Average: {data?.average ?? 0}</div>
-        <div>🎯 Games: {data?.games ?? 0}</div>
-        <div>📚 Series: {data?.series ?? 0}</div>
-      </div>
-    );
-  }}
-/>       
+            return (
+              <div
+                style={{
+                  background: "#0f172a",
+                  border: `1px solid ${appStyles.cardBorder}`,
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  color: appStyles.text,
+                  boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
+                }}
+              >
+                <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                  📅 {label}
+                </div>
+
+                <div>🎳 Average: {data?.average ?? 0}</div>
+                <div>🎯 Games: {data?.games ?? 0}</div>
+                <div>📚 Series: {data?.series ?? 0}</div>
+              </div>
+            );
+          }}
+        />
+
         <Legend />
 
         <Line
@@ -3227,6 +3344,67 @@ if (activeView === "performance") {
           strokeWidth={3}
           dot
           name="Average"
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</div>
+
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowBlue,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <SectionTitle
+    title="🎯 Rolling 10-Series Average"
+    subtitle="Your scoring trend across the most recent 10 series"
+  />
+
+  <div style={{ height: 300 }}>
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={rollingAverageData}>
+        <CartesianGrid strokeOpacity={0.2} />
+
+        <XAxis
+          dataKey="date"
+          tickFormatter={(value) =>
+            new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })
+          }
+        />
+
+        <YAxis domain={["dataMin - 5", "dataMax + 5"]} />
+
+        <Tooltip
+          labelFormatter={(value) =>
+            new Date(`${value}T00:00:00`).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+          }
+          formatter={(value) => [value, "Rolling Average"]}
+        />
+
+        <Legend />
+
+        <Line
+          type="monotone"
+          dataKey="average"
+          stroke={appStyles.success}
+          strokeWidth={3}
+          dot={{ r: 4 }}
+          activeDot={{ r: 7 }}
+          name="Rolling Average"
         />
       </LineChart>
     </ResponsiveContainer>

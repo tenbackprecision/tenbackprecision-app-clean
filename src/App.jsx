@@ -36,7 +36,7 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 
-const APP_VERSION = "v1135";
+const APP_VERSION = "v1136";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -2821,7 +2821,18 @@ if (activeView === "analytics") {
   </div>
 </details>
 
-<div style={{ marginTop: 28 }}>
+<details open style={{ marginTop: 28, marginBottom: 28 }}>
+  <summary
+    style={{
+      cursor: "pointer",
+      fontSize: 22,
+      fontWeight: 900,
+      color: appStyles.accent,
+      marginBottom: 16,
+    }}
+  >
+    🏆 Personal Records
+  </summary>
   <SectionTitle
     title="Personal Records"
     subtitle="Your best performances so far."
@@ -2854,9 +2865,20 @@ if (activeView === "analytics") {
       subValue={`${personalRecords.totalGames} games`}
     />
   </div>
-</div>
+</details>
 
-<div style={{ marginTop: 30 }}>
+<details open style={{ marginTop: 30, marginBottom: 28 }}>
+  <summary
+    style={{
+      cursor: "pointer",
+      fontSize: 22,
+      fontWeight: 900,
+      color: appStyles.accent,
+      marginBottom: 16,
+    }}
+  >
+    📈 Average Progression
+  </summary>
   <SectionTitle
     title="Average Progression"
     subtitle="Track your scoring average over time."
@@ -2898,7 +2920,7 @@ if (activeView === "analytics") {
       </LineChart>
     </ResponsiveContainer>
   </div>
-</div>
+</details>
 
   <div style={{ textAlign: "center", marginTop: 20 }}>
     <button
@@ -3509,8 +3531,21 @@ if (activeView === "performance") {
 
         </div>
 
-        {showHouseAverages ? (
-          <div
+          <details open>
+  <summary
+    style={{
+      cursor: "pointer",
+      fontSize: 22,
+      fontWeight: 900,
+      color: appStyles.accent,
+      marginBottom: 16,
+      listStyle: "none",
+    }}
+  >
+    ⚡ Quick Performance Stats
+  </summary>
+
+  <div
             style={{
               background: "rgba(255,255,255,0.05)",
               backdropFilter: "blur(10px)",
@@ -3604,6 +3639,7 @@ if (activeView === "performance") {
     Best House Avg
   </div>
 
+
   <div style={{ fontSize: 20, fontWeight: 900 }}>
     {miniPerformanceStats.bestHouse
       ? miniPerformanceStats.bestHouse.average
@@ -3615,6 +3651,8 @@ if (activeView === "performance") {
   </div>
 </div>
             </div>
+	   </div>
+</details>
 
             <div style={{ marginTop: 24 }}>
               <SectionTitle
@@ -3745,7 +3783,6 @@ if (activeView === "performance") {
               </div>
             )}
           </div>
-        ) : null}
 
         <div
           style={{
@@ -4483,7 +4520,6 @@ boardLayout: {
             </div>
           )}
         </div>
-      </div>
 
 <SessionIntelModal
   selectedSessionIntel={selectedSessionIntel}

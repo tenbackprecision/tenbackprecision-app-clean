@@ -36,8 +36,9 @@ import heic2any from "heic2any";
 import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 import AnalyticsPage from "./components/AnalyticsPage";
+import RecentSeries from "./components/RecentSeries";
 
-const APP_VERSION = "v1138";
+const APP_VERSION = "v1139";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -2178,6 +2179,63 @@ const pageSubtitleStyle = {
   fontSize: 16,
 };
 
+function handleEditSeries(series) {
+  setEditingSeriesId(series.id);
+
+  setNewSeries({
+    date: series.date || todayString(),
+    house: series.house || "",
+    type: series.type || series.event || "Practice",
+
+    games:
+      Array.isArray(series.games) && series.games.length
+        ? series.games.map((game) => String(game))
+        : ["", "", ""],
+
+    gameLayouts:
+      Array.isArray(series.gameLayouts) && series.gameLayouts.length
+        ? series.gameLayouts
+        : [
+            { feet: "", target: "", breakpoint: "" },
+            { feet: "", target: "", breakpoint: "" },
+            { feet: "", target: "", breakpoint: "" },
+          ],
+
+    oilPattern: series.oilPattern || "",
+
+    primaryBall: series.primaryBall || "",
+    primaryBallId: series.primaryBallId || "",
+
+    secondaryBall: series.secondaryBall || "",
+    secondaryBallId: series.secondaryBallId || "",
+
+    feet: series.feet || "",
+    target: series.target || "",
+    breakpoint: series.breakpoint || "",
+    surface: series.surface || "",
+    transitionNote: series.transitionNote || "",
+    notes: series.notes || "",
+
+    pinLayout: Array.isArray(series.pinLayout)
+      ? series.pinLayout
+      : [],
+
+    boardLayout: {
+      feet: series.boardLayout?.feet || "",
+      target: series.boardLayout?.target || "",
+      breakpoint: series.boardLayout?.breakpoint || "",
+    },
+  });
+
+  setActiveView("performance");
+
+  setTimeout(() => {
+    addSeriesRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 100);
+}
   async function handleDelete(id) {
   const confirmed = window.confirm("Delete this series?");
   if (!confirmed) return;
@@ -2725,6 +2783,8 @@ return (
     performanceSummary={performanceSummary}
     houseStats={houseStats}
     personalRecords={personalRecords}
+    achievements={achievements}
+    miniPerformanceStats={miniPerformanceStats}
     averageProgressionData={averageProgressionData}
     rollingAverageData={rollingAverageData}
     appStyles={appStyles}
@@ -2866,233 +2926,6 @@ if (activeView === "performance") {
         />
       </div>
 
-<div
-  style={{
-    background: appStyles.card,
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 24,
-    backdropFilter: "blur(18px)",
-    WebkitBackdropFilter: "blur(18px)",
-    boxShadow: appStyles.glowBlue,
-    padding: 18,
-    marginBottom: 18,
-  }}
->
-  <button
-  type="button"
-  onClick={() => setShowAchievementTracker((prev) => !prev)}
-  style={{
-    width: "100%",
-    border: "none",
-    background: "transparent",
-    color: appStyles.text,
-    cursor: "pointer",
-    padding: 0,
-    marginBottom: showAchievementTracker ? 24 : 0,
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: 12,
-    }}
-  >
-    <div
-  style={{
-    flex: 1,
-    textAlign: "center",
-  }}
->
-      <div style={{ fontSize: 24, fontWeight: 900 }}>
-        🏅 Achievement Tracker
-      </div>
-
-      <div style={{ color: appStyles.muted, marginTop: 6 }}>
-        Milestones unlocked from your bowling history
-      </div>
-    </div>
-
-    <div
-  style={{
-    fontSize: 20,
-    width: 32,
-    textAlign: "right",
-  }}
->
-      {showAchievementTracker ? "▲" : "▼"}
-    </div>
-  </div>
-</button>
-{showAchievementTracker && (
-  <>
-
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: isPhone
-        ? "1fr"
-        : isFoldable
-          ? "repeat(2, minmax(0, 1fr))"
-          : "repeat(4, minmax(0, 1fr))",
-      gap: 12,
-    }}
-  >
-    {achievements.map((a) => (
-      <div
-        key={a.label}
-        style={{
-          background: a.unlocked
-            ? "rgba(255,255,255,0.10)"
-            : "rgba(255,255,255,0.04)",
-          border: `1px solid ${
-            a.unlocked
-              ? appStyles.accent2
-              : appStyles.cardBorder
-          }`,
-          borderRadius: 18,
-          padding: 14,
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: 32, marginBottom: 8 }}>
-          {a.icon}
-        </div>
-
-        <div
-          style={{
-            fontWeight: 700,
-            marginBottom: 6,
-            color: appStyles.text,
-          }}
-        >
-          {a.label}
-        </div>
-
-        <div
-          style={{
-            fontSize: 13,
-            color: appStyles.muted,
-          }}
-        >
-          {a.detail}
-         </div>
-       </div>
-    ))}
-  </div>
-</>
-   )}
-</div>
-
-<div
-  style={{
-    background: appStyles.card,
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 24,
-    backdropFilter: "blur(18px)",
-    WebkitBackdropFilter: "blur(18px)",
-    boxShadow: appStyles.glowPurple,
-    padding: 18,
-    marginBottom: 18,
-  }}
->
-  <button
-  type="button"
-  onClick={() => setShowPersonalRecords((prev) => !prev)}
-  style={{
-    width: "100%",
-    border: "none",
-    background: "transparent",
-    color: appStyles.text,
-    cursor: "pointer",
-    padding: 0,
-    marginBottom: showPersonalRecords ? 24 : 0,
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <div
-  style={{
-    flex: 1,
-    textAlign: "center",
-  }}
->
-      <div style={{ fontSize: 24, fontWeight: 900 }}>
-        🏆 Personal Records
-      </div>
-
-      <div style={{ color: appStyles.muted, marginTop: 6 }}>
-        Your best bowling marks from the current filters
-      </div>
-    </div>
-
-    <div
-  style={{
-    fontSize: 20,
-    width: 32,
-    textAlign: "right",
-  }}
->
-      {showPersonalRecords ? "▲" : "▼"}
-    </div>
-  </div>
-</button>
-{showPersonalRecords && (
-  <>
-
-
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: isPhone
-        ? "1fr"
-        : isFoldable
-          ? "repeat(2, minmax(0, 1fr))"
-          : "repeat(3, minmax(0, 1fr))",
-      gap: 12,
-    }}
-  >
-    <StatCard
-      label="Highest Game"
-      value={String(personalRecords.highGame)}
-      subValue="Best single game"
-    />
-    <StatCard
-      label="Highest Series"
-      value={String(personalRecords.highSeries)}
-      subValue="Best total set"
-    />
-    <StatCard
-      label="Overall Avg"
-      value={String(personalRecords.average)}
-      subValue="Across filtered games"
-    />
-    <StatCard
-      label="Games Bowled"
-      value={String(personalRecords.totalGames)}
-      subValue="Games tracked"
-    />
-    <StatCard
-      label="Series Bowled"
-      value={String(personalRecords.totalSeries)}
-      subValue="Series tracked"
-    />
-    <StatCard
-      label="200+ Games"
-      value={String(personalRecords.games200)}
-      subValue="Games at 200 or better"
-    />
-    </div>
-
-  </>
-)}
-</div>
 
       <div
         style={{
@@ -3191,130 +3024,6 @@ if (activeView === "performance") {
 </div>
 
         </div>
-
-          <details open>
-  <summary
-    style={{
-      cursor: "pointer",
-      fontSize: 22,
-      fontWeight: 900,
-      color: appStyles.accent,
-      marginBottom: 16,
-      listStyle: "none",
-    }}
-  >
-    ⚡ Quick Performance Stats
-  </summary>
-
-  <div
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
-              border: `1px solid ${appStyles.cardBorder}`,
-              borderRadius: 18,
-              padding: 18,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-            }}
-          >
-            <SectionTitle
-              title="Quick Performance Stats"
-              subtitle="Snapshot from current filters"
-            />
-
-            <div style={{ display: "grid", gap: 14, marginTop: 14 }}>
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: `1px solid ${appStyles.cardBorder}`,
-                  borderRadius: 14,
-                  padding: 12,
-                }}
-              >
-                <div style={{ color: appStyles.muted, fontSize: 14 }}>Games This Year</div>
-                <div style={{ fontSize: 24, fontWeight: 900 }}>
-                  {miniPerformanceStats.gamesThisYear}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: `1px solid ${appStyles.cardBorder}`,
-                  borderRadius: 14,
-                  padding: 12,
-                }}
-              >
-                <div style={{ color: appStyles.muted, fontSize: 14 }}>Top House</div>
-                <div style={{ fontSize: 20, fontWeight: 900 }}>
-                  {miniPerformanceStats.mostBowledHouse}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: `1px solid ${appStyles.cardBorder}`,
-                  borderRadius: 14,
-                  padding: 12,
-                }}
-              >
-                <div style={{ color: appStyles.muted, fontSize: 14 }}>Most Common Event</div>
-                <div style={{ fontSize: 20, fontWeight: 900 }}>
-                  {miniPerformanceStats.mostCommonEvent}
-                </div>
-              </div>
-<div
-  style={{
-    background: "rgba(255,255,255,0.04)",
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 14,
-    padding: 12,
-  }}
->
-  <div
-  style={{
-    fontSize: 20,
-    fontWeight: 900,
-    color:
-      miniPerformanceStats.currentStreak > 0
-        ? appStyles.accent
-        : appStyles.muted,
-  }}
->
-  {miniPerformanceStats.currentStreak > 0
-    ? `🔥 ${miniPerformanceStats.currentStreak} series`
-    : "No streak"}
-</div>
-</div>
-
-<div
-  style={{
-    background: "rgba(255,255,255,0.04)",
-    border: `1px solid ${appStyles.cardBorder}`,
-    borderRadius: 14,
-    padding: 12,
-  }}
->
-  <div style={{ color: appStyles.muted, fontSize: 14 }}>
-    Best House Avg
-  </div>
-
-
-  <div style={{ fontSize: 20, fontWeight: 900 }}>
-    {miniPerformanceStats.bestHouse
-      ? miniPerformanceStats.bestHouse.average
-      : "--"}
-  </div>
-
-  <div style={{ color: appStyles.muted, marginTop: 4 }}>
-    {miniPerformanceStats.bestHouse?.house || "No data"}
-  </div>
-</div>
-            </div>
-	   </div>
-</details>
-
 
         <div
           style={{
@@ -3779,279 +3488,14 @@ if (activeView === "performance") {
 )}
 </div>
 
-          <SectionTitle
-            title="Recent Series"
-            subtitle="Latest saved house and score data"
-          />
+<RecentSeries
+  sortedSeries={sortedSeries}
+  appStyles={appStyles}
+  onEdit={handleEditSeries}
+  onDelete={handleDelete}
+/>
 
-          {sortedSeries.length === 0 ? (
-            <div style={{ color: appStyles.muted, textAlign: "center" }}>
-              No series yet.
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              {sortedSeries
-  .slice(0, showAllRecentSeries ? sortedSeries.length : 3)
-  .map((series) => {
-  const isExpanded = expandedSeries[series.id];
-
-  return (
-
-                <div
-  key={series.id}
-  style={{
-  background:
-    editingSeriesId === series.id
-      ? "rgba(255, 200, 0, 0.16)"
-      : appStyles.card,
-  border: `1px solid ${
-    editingSeriesId === series.id
-      ? "rgba(255,215,0,0.45)"
-      : appStyles.cardBorder
-  }`,
-  borderRadius: 24,
-  padding: 18,
-  marginBottom: 18,
-  backdropFilter: "blur(18px)",
-  WebkitBackdropFilter: "blur(18px)",
-  boxShadow:
-    editingSeriesId === series.id
-      ? "0 0 30px rgba(255,215,0,0.28)"
-      : appStyles.glowBlue,
-  transition: "all 0.22s ease",
-}}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={{ fontWeight: 800 }}>{series.house}</div>
-                    <div style={{ color: appStyles.muted }}>{series.date}</div>
-                  </div>
-
-                  <div style={{ marginTop: 6, color: appStyles.muted }}>
-                    {series.type}
-                  </div>
-
-                  <div style={{ marginTop: 8 }}>
-  <strong>
-    Games (
-    {(series.games && series.games.length)
-      ? series.games.length
-      : [
-          series.game1,
-          series.game2,
-          series.game3,
-          series.game4,
-          series.game5,
-          series.game6,
-        ].filter(Boolean).length}
-    ):
-  </strong>
 </div>
-
-{expandedSeriesScores[series.id] ? (
-  <div
-    style={{
-      marginTop: 4,
-      fontSize: 14,
-      lineHeight: 1.5,
-      wordBreak: "break-word",
-    }}
-  >
-    {(
-      series.games && series.games.length
-        ? series.games
-        : [
-            series.game1,
-            series.game2,
-            series.game3,
-            series.game4,
-            series.game5,
-            series.game6,
-          ].filter(Boolean)
-    ).join(" • ")}
-  </div>
-) : null}
-
-<button
-  type="button"
-  onClick={() =>
-    setExpandedSeriesScores((prev) => ({
-      ...prev,
-      [series.id]: !prev[series.id],
-    }))
-  }
-  style={{
-    ...buttonStyle,
-    background: "rgba(255,255,255,0.10)",
-    color: appStyles.text,
-    marginTop: 8,
-    padding: "8px 12px",
-    fontSize: 13,
-  }}
->
-  {expandedSeriesScores[series.id] ? "Hide Scores" : "Show Scores"}
-</button>
-
-
-                  <div style={{ marginTop: 8 }}>
-                    Total: <strong>{series.total}</strong> · Avg:{" "}
-                    <strong>{series.average}</strong> · High Game:{" "}
-                    <strong>{series.highGame}</strong>
-                  </div>
-
-{Array.isArray(series.pinLayout) && series.pinLayout.length > 0 && (
-  <div
-    style={{
-      marginTop: 8,
-      color: appStyles.muted,
-      fontSize: 14,
-    }}
-  >
-    🎳 Pin Layout:{" "}
-    <strong style={{ color: appStyles.text }}>
-      {series.pinLayout.join("-")}
-    </strong>
-  </div>
-)}
-
-{series.boardLayout &&
-(
-  series.boardLayout.feet ||
-  series.boardLayout.target ||
-  series.boardLayout.breakpoint
-) && (
-  <div
-    style={{
-      marginTop: 8,
-      color: appStyles.muted,
-      fontSize: 14,
-    }}
-  >
-    🎯 Board Layout:{" "}
-    <strong style={{ color: appStyles.text }}>
-      Feet {series.boardLayout.feet || "-"} • Target{" "}
-      {series.boardLayout.target || "-"} • Breakpoint{" "}
-      {series.boardLayout.breakpoint || "-"}
-    </strong>
-  </div>
-)}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      gap: 12,
-                      marginTop: 12,
-                      flexWrap: "wrap",
-                    }}
-                  >
-
-<button
-  type="button"
-  onClick={() => setSelectedSessionIntel(series)}
-  style={{
-    ...buttonStyle,
-    width: "100%",
-    background: appStyles.accent,
-    color: "#1a1633",
-  }}
->
-  📋 Session Intel
-</button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingSeriesId(series.id);
-                        setNewSeries({
-  date: series.date || todayString(),
-  house: series.house || "",
-  type: series.type || "Practice",
-  games:
-    series.games && series.games.length
-      ? series.games.map(String)
-      : [
-          series.game1 || "",
-          series.game2 || "",
-          series.game3 || "",
-          series.game4 || "",
-          series.game5 || "",
-          series.game6 || "",
-        ].filter(Boolean).map(String),
-
-oilPattern: series.oilPattern || "",
-primaryBall: series.primaryBall || "",
-secondaryBall: series.secondaryBall || "",
-feet: series.feet || "",
-target: series.target || "",
-breakpoint: series.breakpoint || "",
-surface: series.surface || "",
-transitionNote: series.transitionNote || "",
-
-  notes: series.notes || "",
- pinLayout: Array.isArray(series.pinLayout)
-  ? series.pinLayout
-  : [],
-
-boardLayout: {
-  feet: series.boardLayout?.feet || "",
-  target: series.boardLayout?.target || "",
-  breakpoint: series.boardLayout?.breakpoint || "",
-},
-});
-
-                        setTimeout(() => {
-                          addSeriesRef.current?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                          });
-                        }, 100);
-                      }}
-                      style={buttonStyle}
-                                        >
-
-                      Edit
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(series.id)}
-                      style={{ ...buttonStyle, background: "#ff4d4f" }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-			      );
-                            })}
-
-              {sortedSeries.length > 3 ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowAllRecentSeries((prev) => !prev)
-                  }
-                  style={{
-                    ...buttonStyle,
-                    background: "rgba(255,255,255,0.12)",
-                    color: appStyles.text,
-                    marginTop: 12,
-                    width: "100%",
-                  }}
-                >
-                  {showAllRecentSeries
-                    ? "Show Most Recent 3"
-                    : "Show All Series"}
-                </button>
-              ) : null}
-            </div>
-          )}
-        </div>
 
 <SessionIntelModal
   selectedSessionIntel={selectedSessionIntel}

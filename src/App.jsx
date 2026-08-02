@@ -37,6 +37,9 @@ import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 import AnalyticsPage from "./components/AnalyticsPage";
 import RecentSeries from "./components/RecentSeries";
+import RecentActivity from "./components/RecentActivity";
+import ReceiptsSnapshot from "./components/ReceiptsSnapshot";
+import ExpenseEntries from "./components/ExpenseEntries";
 
 const APP_VERSION = "v1139";
 const MAX_RECEIPT_SIZE_MB = 8;
@@ -4466,157 +4469,19 @@ resize: "none",
           marginBottom: 18,
         }}
       >
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 18,
-            padding: 18,
-          }}
-        >
-          <SectionTitle
-            title="Recent Activity"
-            subtitle="Latest movement across income and expenses."
-          />
+<RecentActivity
+  activityItems={activityItems}
+  appStyles={appStyles}
+  currency={currency}
+/>
 
-          {activityItems.length === 0 ? (
-            <div style={{ color: appStyles.muted, textAlign: "center" }}>
-              No activity yet.
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-{activityItems
-  .slice(0, showAllRecentActivity ? activityItems.length : 3)
-  .map((item) => (
-                <div
-                  key={`${item.type}-${item.id}`}
-                  style={{
-  background: "rgba(255,255,255,0.04)",
-  border: `1px solid ${appStyles.cardBorder}`,
-  borderRadius: 14,
-  padding: 12,
-
-  minHeight: 78,
-  width: "95%",
-
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "space-between",
-
-  gap: 10,
-}}
-                >
-                  <div>
-                    <div style={{ fontWeight: 800 }}>{item.title}</div>
-                    <div style={{ color: appStyles.muted, fontSize: 14 }}>
-                      {item.type} • {item.date}
-                    </div>
-                    {item.note ? <div style={{ marginTop: 6 }}>{item.note}</div> : null}
-                  </div>
-                  <div
-                    style={{
-                      fontWeight: 900,
-                      color: item.amount >= 0 ? appStyles.success : "#ff8a8a",
-                    }}
-                  >
-                    {currency(item.amount)}
-                  </div>
-                </div>
-              ))}
-{activityItems.length > 3 ? (
-  <button
-    type="button"
-    onClick={() => setShowAllRecentActivity((prev) => !prev)}
-    style={{
-      ...buttonStyle,
-      background: "rgba(255,255,255,0.12)",
-      color: appStyles.text,
-      marginTop: 12,
-      width: "100%",
-    }}
-  >
-    {showAllRecentActivity ? "Show Most Recent 3" : "Show All Activity"}
-  </button>
-) : null}
-            </div>
-          )}
-        </div>
-
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 18,
-            padding: 18,
-          }}
-        >
-          <SectionTitle
-            title="Receipts Snapshot"
-            subtitle="Newest receipt-backed expenses."
-          />
-
-          <div style={{ textAlign: "center", marginBottom: 12 }}>
-            <button
-              onClick={() => setActiveView("receipts")}
-              style={{
-                ...buttonStyle,
-                background: "rgba(255,255,255,0.12)",
-                color: appStyles.text,
-              }}
-            >
-              Open Gallery
-            </button>
-          </div>
-
-          {receiptItems.length === 0 ? (
-            <div style={{ color: appStyles.muted, textAlign: "center" }}>
-              No receipts yet.
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {receiptItems.slice(0, 3).map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: `1px solid ${appStyles.cardBorder}`,
-                    borderRadius: 14,
-                    padding: 12,
-                    display: "flex",
-                    gap: 12,
-                    alignItems: "center",
-                  }}
-                >
-                  <img
-                    src={item.receipt}
-                    alt="Receipt"
-                    style={{
-                      width: 64,
-                      height: 64,
-                      objectFit: "cover",
-                      borderRadius: 10,
-                      background: "#fff",
-                    }}
-                  />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800 }}>{item.category}</div>
-                    <div style={{ color: appStyles.muted }}>{item.date}</div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedReceipt(item.receipt)}
-                    style={{
-                      ...buttonStyle,
-                      background: appStyles.accent2,
-                      color: "#06203a",
-                    }}
-                  >
-                    View
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+<ReceiptsSnapshot
+  receiptItems={receiptItems}
+  appStyles={appStyles}
+  buttonStyle={buttonStyle}
+  setActiveView={setActiveView}
+  setSelectedReceipt={setSelectedReceipt}
+/>
       </div>
 
       <div
@@ -4626,122 +4491,16 @@ resize: "none",
           gap: 18,
         }}
       >
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 18,
-            padding: 18,
-          }}
-        >
-          <SectionTitle
-            title="Expense Entries"
-            subtitle="Edit or delete while hunting through fewer menus."
-          />
+<ExpenseEntries
+  filteredExpenses={filteredExpenses}
+  appStyles={appStyles}
+  buttonStyle={buttonStyle}
+  currency={currency}
+  setEditingExpenseId={setEditingExpenseId}
+  setExpenseForm={setExpenseForm}
+  removeExpense={removeExpense}
+/>
 
-{filteredExpenses.length === 0 ? (
-  <div style={{ color: appStyles.muted, textAlign: "center" }}>
-    No expenses found.
-  </div>
-) : (
-  <div style={{ display: "grid", gap: 10 }}>
-    {filteredExpenses
-      .slice(0, showAllExpenses ? filteredExpenses.length : 3)
-      .map((item) => (
-        <div
-          key={item.id}
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 14,
-            padding: 12,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div style={{ fontWeight: 800 }}>{item.category}</div>
-              <div style={{ color: appStyles.muted, fontSize: 14 }}>
-                {item.date}
-              </div>
-            </div>
-            <div style={{ fontWeight: 900 }}>{currency(item.amount)}</div>
-          </div>
-
-          {item.note ? <div style={{ marginTop: 8 }}>{item.note}</div> : null}
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 10,
-              marginTop: 10,
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              onClick={() => {
-                setEditingExpenseId(item.id);
-                setExpenseForm({
-                  date: item.date || todayString(),
-                  category: item.category || "Tournament",
-                  amount: String(item.amount || ""),
-                  note: item.note || "",
-                  receipt: item.receipt || "",
-                });
-                document
-                  .getElementById("expense-form")
-                  ?.scrollIntoView({ behavior: "smooth" });
-              }}
-              style={{
-                ...buttonStyle,
-                background: appStyles.accent,
-                color: "#1a1633",
-                padding: "8px 12px",
-              }}
-            >
-              Edit
-            </button>
-
-            <button
-              onClick={() => removeExpense(item)}
-              style={{
-                ...buttonStyle,
-                background: "#ff6b6b",
-                color: "#fff",
-                padding: "8px 12px",
-              }}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
-
-    {filteredExpenses.length > 3 ? (
-      <button
-        type="button"
-        onClick={() => setShowAllExpenses((prev) => !prev)}
-        style={{
-          ...buttonStyle,
-          background: "rgba(255,255,255,0.12)",
-          color: appStyles.text,
-          marginTop: 12,
-          width: "100%",
-        }}
-      >
-        {showAllExpenses ? "Show Most Recent 3" : "Show All Expenses"}
-      </button>
-    ) : null}
-  </div>
-)}
-</div>
 
         <div
           style={{

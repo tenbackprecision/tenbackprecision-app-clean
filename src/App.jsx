@@ -40,12 +40,17 @@ import RecentSeries from "./components/RecentSeries";
 import RecentActivity from "./components/RecentActivity";
 import ReceiptsSnapshot from "./components/ReceiptsSnapshot";
 import ExpenseEntries from "./components/ExpenseEntries";
+import IncomeEntries from "./components/IncomeEntries";
+import ReceiptModal from "./components/ReceiptModal";
+import ToastMessage from "./components/ToastMessage";
+import SyncIndicator from "./components/SyncIndicator";
 
-const APP_VERSION = "v1139";
+const APP_VERSION = "v1140";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
   "Tournament",
+  "Side Pot",
   "League Fees",
   "Practice",
   "Food",
@@ -58,7 +63,7 @@ const expenseCategories = [
 
 const incomeSources = [
   "Tournament Winnings",
-  "Side Hustle",
+  "Side Pot",
   "Sales",
   "Refund",
   "Other",
@@ -4501,186 +4506,26 @@ resize: "none",
   removeExpense={removeExpense}
 />
 
-
-        <div
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            border: `1px solid ${appStyles.cardBorder}`,
-            borderRadius: 18,
-            padding: 18,
-          }}
-        >
-          <SectionTitle
-            title="Income Entries"
-            subtitle="Track winnings, side money, and other incoming dollars."
-          />
-
-          {filteredIncome.length === 0 ? (
-            <div style={{ color: appStyles.muted, textAlign: "center" }}>
-              No income found.
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: 10 }}>
-              {filteredIncome
-  .slice(0, showAllIncome ? filteredIncome.length : 3)
-  .map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    border: `1px solid ${appStyles.cardBorder}`,
-                    borderRadius: 14,
-                    padding: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 10,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 800 }}>{item.source}</div>
-                      <div style={{ color: appStyles.muted, fontSize: 14 }}>
-                        {item.date}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 900, color: appStyles.success }}>
-                      {currency(item.amount)}
-                    </div>
-                  </div>
-
-                  {item.note ? <div style={{ marginTop: 8 }}>{item.note}</div> : null}
-
-                  <div
-  style={{
-    display: "flex",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 10,
-    flexWrap: "wrap",
-  }}
->
-                    <button
-                      onClick={() => {
-                        setEditingIncomeId(item.id);
-                        setIncomeForm({
-                          date: item.date || todayString(),
-                          source: item.source || "Tournament Winnings",
-                          amount: String(item.amount || ""),
-                          note: item.note || "",
-                        });
-                        document.getElementById("income-form")?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                      style={{
-                        ...buttonStyle,
-                        background: appStyles.accent2,
-                        color: "#06203a",
-                        padding: "8px 12px",
-                      }}
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      onClick={() => removeIncome(item)}
-                      style={{
-                        ...buttonStyle,
-                        background: "#ff6b6b",
-                        color: "#fff",
-                        padding: "8px 12px",
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-{filteredIncome.length > 3 ? (
-  <button
-    type="button"
-    onClick={() => setShowAllIncome((prev) => !prev)}
-    style={{
-      ...buttonStyle,
-      background: "rgba(255,255,255,0.12)",
-      color: appStyles.text,
-      marginTop: 12,
-      width: "100%",
-    }}
-  >
-    {showAllIncome ? "Show Most Recent 3" : "Show All Income"}
-  </button>
-) : null}
-            </div>
-          )}
-        </div>
+<IncomeEntries
+  filteredIncome={filteredIncome}
+  appStyles={appStyles}
+  buttonStyle={buttonStyle}
+  currency={currency}
+  setEditingIncomeId={setEditingIncomeId}
+  setIncomeForm={setIncomeForm}
+  removeIncome={removeIncome}
+/>
       </div>
 
-      {selectedReceipt ? (
-        <div
-          onClick={() => setSelectedReceipt(null)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.75)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-            zIndex: 100,
-          }}
-        >
-          <img
-            src={selectedReceipt}
-            alt="Receipt full"
-            style={{
-              maxWidth: "90vw",
-              maxHeight: "90vh",
-              borderRadius: 14,
-              background: "#fff",
-            }}
-          />
-        </div>
-      ) : null}
+<ReceiptModal
+  selectedReceipt={selectedReceipt}
+  setSelectedReceipt={setSelectedReceipt}
+/>
 
-      {toast ? (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 18,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background:
-              toast.type === "error" ? "#c62828" : "rgba(0,0,0,0.75)",
-            color: "#fff",
-            padding: "12px 18px",
-            borderRadius: 14,
-            zIndex: 50,
-            fontWeight: 700,
-          }}
-        >
-          {toast.message}
-        </div>
-      ) : null}
+<ToastMessage toast={toast} />
 
-      {dataLoading ? (
-        <div
-          style={{
-            position: "fixed",
-            top: 18,
-            right: 18,
-            background: "rgba(0,0,0,0.55)",
-            color: "#fff",
-            padding: "10px 14px",
-            borderRadius: 12,
-            fontWeight: 700,
-          }}
-        >
-          Syncing data...
-        </div>
-      ) : null}
+<SyncIndicator dataLoading={dataLoading} />
+
      {renderFab()}
     </div>
   );

@@ -33,7 +33,6 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
-import SessionIntelModal from "./components/SessionIntelModal";
 import AddSeriesForm from "./components/AddSeriesForm";
 import AnalyticsPage from "./components/AnalyticsPage";
 import RecentSeries from "./components/RecentSeries";
@@ -317,7 +316,6 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
-  const [showHouseAverages, setShowHouseAverages] = useState(false);
   const [showAllHouseAverages, setShowAllHouseAverages] = useState(false);
   const [expandedSeriesScores, setExpandedSeriesScores] = useState({});
   const [showAllRecentSeries, setShowAllRecentSeries] = useState(false);
@@ -2646,8 +2644,6 @@ if (activeView === "performance") {
       isFoldable={isFoldable}
       lastUpdatedPerformance={lastUpdatedPerformance}
       setActiveView={setActiveView}
-      showHouseAverages={showHouseAverages}
-      setShowHouseAverages={setShowHouseAverages}
       performanceSummary={performanceSummary}
       perfFilters={perfFilters}
       setPerfFilters={setPerfFilters}

@@ -1,6 +1,7 @@
 import AddSeriesForm from "./AddSeriesForm";
 import RecentSeries from "./RecentSeries";
 import SessionIntelModal from "./SessionIntelModal";
+import ToastMessage from "./ToastMessage";
 
 function StatCard({ label, value, subValue, valueColor, appStyles }) {
   return (
@@ -52,8 +53,6 @@ export default function PerformancePage({
   isFoldable,
   lastUpdatedPerformance,
   setActiveView,
-  showHouseAverages,
-  setShowHouseAverages,
   performanceSummary,
   perfFilters,
   setPerfFilters,
@@ -153,22 +152,6 @@ return (
           }}
         >
           Receipts
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowHouseAverages((prev) => !prev)}
-          style={{
-            ...buttonStyle,
-            background: showHouseAverages
-              ? appStyles.accent2
-              : "rgba(255,255,255,0.12)",
-            color: showHouseAverages ? "#06203a" : appStyles.text,
-          }}
-        >
-          {showHouseAverages
-            ? "Hide Performance Insights"
-            : "Show Performance Insights"}
         </button>
 
         <button
@@ -334,6 +317,22 @@ return (
     </select>
   </div>
 </div>
+<RecentSeries
+  sortedSeries={sortedSeries}
+  appStyles={appStyles}
+  onEdit={(series) => {
+  handleEditSeries(series);
+
+  setTimeout(() => {
+    addSeriesRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 0);
+}}
+  onDelete={handleDelete}
+/>
+
 <div ref={addSeriesRef}>
   <AddSeriesForm
     editingSeriesId={editingSeriesId}
@@ -637,7 +636,7 @@ setTimeout(() => {
     .getElementById("equipment-manager")
     ?.scrollIntoView({
       behavior: "smooth",
-      block: "start",
+      block: "start", 
     });
 }, 0);
 }}
@@ -658,6 +657,182 @@ setTimeout(() => {
     </>
   )}
 </div>
+<div
+  style={{
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 24,
+    backdropFilter: "blur(18px)",
+    WebkitBackdropFilter: "blur(18px)",
+    boxShadow: appStyles.glowBlue,
+    padding: 18,
+    marginBottom: 18,
+  }}
+>
+  <button
+    type="button"
+    onClick={() => setShowBowlrImport((prev) => !prev)}
+    style={{
+      width: "100%",
+      border: "none",
+      background: "transparent",
+      color: appStyles.text,
+      cursor: "pointer",
+      padding: 0,
+      marginBottom: showBowlrImport ? 24 : 0,
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 12,
+      }}
+    >
+      <div
+        style={{
+          flex: 1,
+          textAlign: "center",
+          paddingLeft: 26,
+        }}
+      >
+        <div style={{ fontSize: 24, fontWeight: 900 }}>
+          📥 Bowlr Import
+        </div>
+
+        <div style={{ color: appStyles.muted, marginTop: 6 }}>
+          Import bowling history from a Bowlr CSV
+        </div>
+      </div>
+
+      <div style={{ fontSize: 20 }}>
+        {showBowlrImport ? "▲" : "▼"}
+      </div>
+    </div>
+  </button>
+{showBowlrImport && (
+  <>
+    <input
+      ref={bowlrImportRef}
+      type="file"
+      accept=".csv"
+      style={{ display: "none" }}
+      onChange={(e) => handleBowlrImportFile(e.target.files?.[0])}
+    />
+
+    <button
+      type="button"
+      onClick={() => bowlrImportRef.current?.click()}
+      style={{
+        ...buttonStyle,
+        background: appStyles.accent,
+        color: "#1a1633",
+        width: "100%",
+      }}
+    >
+      Upload Bowlr CSV
+    </button>
+  </>
+)}
+{bowlrPreview ? (
+  <div
+    style={{
+      marginTop: 16,
+      display: "grid",
+      gridTemplateColumns: isPhone
+        ? "1fr"
+        : "repeat(3, minmax(0, 1fr))",
+      gap: 10,
+    }}
+  >
+    <StatCard
+      label="Games Found"
+      value={String(bowlrPreview.games)}
+      subValue="From Bowlr export"
+      appStyles={appStyles}
+    />
+
+    <StatCard
+      label="Houses"
+      value={String(bowlrPreview.houses.length)}
+      subValue="Centers found"
+      appStyles={appStyles}
+    />
+
+    <StatCard
+      label="Balls"
+      value={String(bowlrPreview.balls.length)}
+      subValue="Ball IDs found"
+      appStyles={appStyles}
+    />
+
+    <StatCard
+      label="Leagues"
+      value={String(bowlrPreview.leagues.length)}
+      subValue="League names"
+      appStyles={appStyles}
+    />
+
+    <StatCard
+      label="Tournaments"
+      value={String(bowlrPreview.tournaments.length)}
+      subValue="Tournament names"
+      appStyles={appStyles}
+    />
+
+    <StatCard
+      label="Patterns"
+      value={String(bowlrPreview.patterns.length)}
+      subValue="Oil patterns found"
+      appStyles={appStyles}
+    />
+  </div>
+) : null}
+{bowlrPreview ? (
+  <div>
+    <button
+      type="button"
+      onClick={importBowlrGames}
+      style={{
+        ...buttonStyle,
+        background: appStyles.success,
+        color: "#052e16",
+        width: "100%",
+        marginTop: 16,
+      }}
+    >
+      Import {bowlrPreview.games} Bowlr Games
+    </button>
+
+    <button
+      type="button"
+      onClick={deleteImportedBowlrGames}
+      style={{
+        ...buttonStyle,
+        background: appStyles.danger,
+        color: "#fff",
+        width: "100%",
+        marginTop: 10,
+      }}
+    >
+      Delete Previous Bowlr Import
+    </button>
+  </div>
+) : null}
+</div>
+
+<SessionIntelModal
+  selectedSessionIntel={selectedSessionIntel}
+  setSelectedSessionIntel={setSelectedSessionIntel}
+  appStyles={appStyles}
+  buttonStyle={buttonStyle}
+/>
+
+<ToastMessage toast={toast} />
+
+{renderFab()}
+
   </div>
 );
 }

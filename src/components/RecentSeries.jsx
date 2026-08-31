@@ -42,7 +42,7 @@ export default function RecentSeries({
     gap: 12,
   }}
 >
- {(showAll ? sortedSeries : sortedSeries.slice(0, 5)).map((series) => (
+ {(showAll ? sortedSeries : sortedSeries.slice(0, 3)).map((series) => (
     <div
       key={series.id}
       style={{
@@ -125,7 +125,7 @@ export default function RecentSeries({
   style={{
     marginTop: 12,
     display: "flex",
-    justifyContent: "flex-end",
+    justifyContent: "center",
     gap: 8,
   }}
 >
@@ -163,7 +163,7 @@ export default function RecentSeries({
 </div>
     </div>
   ))}
-{sortedSeries.length > 5 && (
+{sortedSeries.length > 3 && (
   <button
     type="button"
     onClick={() => setShowAll((prev) => !prev)}

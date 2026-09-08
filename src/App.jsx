@@ -33,9 +33,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import heic2any from "heic2any";
-import AddSeriesForm from "./components/AddSeriesForm";
 import AnalyticsPage from "./components/AnalyticsPage";
-import RecentSeries from "./components/RecentSeries";
 import RecentActivity from "./components/RecentActivity";
 import ReceiptsSnapshot from "./components/ReceiptsSnapshot";
 import ExpenseEntries from "./components/ExpenseEntries";
@@ -47,7 +45,7 @@ import ReceiptsPage from "./components/ReceiptsPage";
 import SettingsPage from "./components/SettingsPage";
 import PerformancePage from "./components/PerformancePage";
 
-const APP_VERSION = "v1142";
+const APP_VERSION = "v1143";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -105,7 +103,11 @@ const appStyles = {
 };
 
 function todayString() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function currency(value) {
@@ -120,18 +122,6 @@ function cleanText(value) {
   return String(value ?? "").trim().toLowerCase();
 }
 
-function normalizeAmount(value) {
-  if (value === null || value === undefined || value === "") return 0;
-  const cleaned = String(value)
-    .replace(/\$/g, "")
-    .replace(/,/g, "")
-    .replace(/\(/g, "-")
-    .replace(/\)/g, "")
-    .trim();
-  const num = Number(cleaned);
-  return Number.isFinite(num) ? Math.abs(num) : 0;
-}
-
 function monthKey(dateStr) {
   if (!dateStr) return "";
   return String(dateStr).slice(0, 7);
@@ -144,11 +134,9 @@ function getCalendarYear(dateStr) {
 
 function getTaxYear(dateStr) {
   if (!dateStr) return "No Year";
-  const d = new Date(dateStr);
+  const d = new Date(`${dateStr}T12:00:00`);
   if (Number.isNaN(d.getTime())) return getCalendarYear(dateStr);
-  const month = d.getMonth() + 1;
-  const year = d.getFullYear();
-  return String(month >= 1 && month <= 12 ? year : year);
+  return String(d.getFullYear());
 }
 
 function normalizeDate(value) {
@@ -227,23 +215,6 @@ async function compressImage(file, maxWidth = 1600, quality = 0.8) {
   return canvas.toDataURL("image/jpeg", quality);
 }
 
-function calcSeriesStats(series) {
-  const games = [
-    Number(series.game1 || 0),
-    Number(series.game2 || 0),
-    Number(series.game3 || 0),
-    Number(series.game4 || 0),
-    Number(series.game5 || 0),
-    Number(series.game6 || 0),
-  ].filter((g) => g > 0);
-
-  const total = games.reduce((sum, g) => sum + g, 0);
-  const average = games.length ? (total / games.length).toFixed(1) : "0.0";
-  const highGame = games.length ? Math.max(...games) : 0;
-
-  return { games, total, average, highGame };
-}
-
 function downloadTextFile(filename, content) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -316,20 +287,10 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [activeView, setActiveView] = useState("dashboard");
-  const [showAllHouseAverages, setShowAllHouseAverages] = useState(false);
-  const [expandedSeriesScores, setExpandedSeriesScores] = useState({});
-  const [showAllRecentSeries, setShowAllRecentSeries] = useState(false);
-  const [expandedSeries, setExpandedSeries] = useState({});
-const [showAllRecentActivity, setShowAllRecentActivity] = useState(false);
-const [showAllExpenses, setShowAllExpenses] = useState(false);
-const [showAllIncome, setShowAllIncome] = useState(false);
 const [showAllReceipts, setShowAllReceipts] = useState(false);
 const [selectedSessionIntel, setSelectedSessionIntel] = useState(null);
 const [equipment, setEquipment] = useState([]);
 const [showEquipmentManager, setShowEquipmentManager] = useState(false);
-const [showQuickPerformanceStats, setShowQuickPerformanceStats] = useState(false);
-const [showPersonalRecords, setShowPersonalRecords] = useState(false);
-const [showAchievementTracker, setShowAchievementTracker] = useState(false);
 const [showBowlrImport, setShowBowlrImport] = useState(false);
 const [showFabMenu, setShowFabMenu] = useState(false);
 const [defaultHouse, setDefaultHouse] = useState(
@@ -413,16 +374,6 @@ const [editingEquipmentId, setEditingEquipmentId] = useState(null);
   endDate: "",
 });
 
-const performanceHouses = [
-  "All",
-  ...new Set(seriesList.map((item) => item.house).filter(Boolean)),
-];
-
-const performanceEvents = [
-  "All",
-  ...new Set(seriesList.map((item) => item.type || item.event).filter(Boolean)),
-];
-
 const equipmentOptions = useMemo(
   () =>
     equipment
@@ -442,14 +393,14 @@ const filteredSeries = seriesList.filter((item) => {
 
   const matchesStart =
     !perfFilters.startDate ||
-    new Date(item.date) >= new Date(perfFilters.startDate);
+    String(item.date || "") >= perfFilters.startDate;
 
   const matchesEnd =
     !perfFilters.endDate ||
-    new Date(item.date) <= new Date(perfFilters.endDate);
+    String(item.date || "") <= perfFilters.endDate;
 
 const selectedYear = String(perfFilters.year || "").toLowerCase();
-const itemYear = new Date(item.date).getFullYear().toString();
+const itemYear = getCalendarYear(item.date);
 
 const matchesYear =
   selectedYear === "all" ||
@@ -915,11 +866,6 @@ async function saveEquipment() {
 
   image: equipmentForm.image || "",
 
-  games: 0,
-  average: 0,
-  highGame: 0,
-  bestSeries: 0,
-
   updatedAt: serverTimestamp(),
 };
 
@@ -932,6 +878,11 @@ async function saveEquipment() {
 
       showToast("Equipment updated!");
     } else {
+      payload.games = 0;
+      payload.average = 0;
+      payload.highGame = 0;
+      payload.bestSeries = 0;
+
       payload.createdAt = serverTimestamp();
 
       await addDoc(
@@ -1315,75 +1266,6 @@ function handleBowlrImportFile(file) {
   reader.readAsText(file);
 }
 
-function convertBowlrRowToSeries(row) {
-  console.log("Bowlr row sample:", row);
-console.log("Bowlr date fields:", {
-  dateTime: row.dateTime,
-  date: row.date,
-  startDate: row.startDate,
-  createdAt: row.createdAt,
-});
-
-const score = Number(row.score || 0);
-
-  const primaryBall =
-    row.firstLaneStrikeBallId ||
-    row.secondLaneStrikeBallId ||
-    "";
-
-  const secondaryBall =
-    row.firstLaneSpareBallId ||
-    row.secondLaneSpareBallId ||
-    "";
-
-  const oilPattern =
-    row.firstLaneOilPattern ||
-    row.secondLaneOilPattern ||
-    "";
-
-  const laneInfo =
-    row.firstLane && row.secondLane
-      ? `Lanes ${row.firstLane}/${row.secondLane}`
-      : row.firstLane
-        ? `Lane ${row.firstLane}`
-        : "";
-
-  const details = [
-    row.league ? `League: ${row.league}` : "",
-    row.leagueWeek ? `Week: ${row.leagueWeek}` : "",
-    row.tournament ? `Tournament: ${row.tournament}` : "",
-    laneInfo,
-    row.notes ? `Bowlr Notes: ${row.notes}` : "",
-    row.id ? `Bowlr ID: ${row.id}` : "",
-  ]
-    .filter(Boolean)
-    .join(" | ");
-
-  return {
-    uid: user.uid,
-    date: normalizeBowlrDate(row.dateTime),
-    house: String(row.house || "Unknown House").trim(),
-    type: row.type || "Practice",
-
-    oilPattern: String(oilPattern || "").trim(),
-    primaryBall: String(primaryBall || "").trim(),
-    secondaryBall: String(secondaryBall || "").trim(),
-    feet: "",
-    target: "",
-    breakpoint: "",
-    surface: "",
-    transitionNote: "",
-
-    notes: details,
-    games: score > 0 ? [score] : [],
-    total: score,
-    average: score,
-    highGame: score,
-    bowlrId: row.id || "",
-    source: "Bowlr",
-    updatedAt: serverTimestamp(),
-  };
-}
 
 function convertBowlrRowsToGroupedSeries(rows) {
   const groups = {};
@@ -1398,10 +1280,8 @@ function convertBowlrRowsToGroupedSeries(rows) {
   row.league || "",
 ].join("|");
 
-const key = sessionKey;
-
-    if (!groups[key]) {
-      groups[key] = {
+    if (!groups[sessionKey]) {
+      groups[sessionKey] = {
         rows: [],
         date,
         house,
@@ -1423,7 +1303,7 @@ const key = sessionKey;
       };
     }
 
-    groups[key].rows.push(row);
+    groups[sessionKey].rows.push(row);
   });
 
   return Object.values(groups).map((group) => {
@@ -1570,7 +1450,7 @@ async function deleteImportedBowlrGames() {
       ),
     ]);
     return Array.from(set).filter(Boolean).sort((a, b) => b.localeCompare(a));
-  }, [expenses, income, filteredSeries, yearMode]);
+}, [expenses, income, seriesList, yearMode]);
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter((item) => {
@@ -1626,8 +1506,7 @@ const monthlyFinancialData = useMemo(() => {
   const months = {};
 
   expenses.forEach((e) => {
-    const month = new Date(e.date).toLocaleDateString("en-US", {
-      month: "short",
+const month = new Date(`${e.date}T12:00:00`).toLocaleDateString("en-US", {      month: "short",
       year: "2-digit",
     });
 
@@ -1643,7 +1522,7 @@ const monthlyFinancialData = useMemo(() => {
   });
 
   income.forEach((i) => {
-    const month = new Date(i.date).toLocaleDateString("en-US", {
+    const month = new Date(`${i.date}T12:00:00`).toLocaleDateString("en-US", {
       month: "short",
       year: "2-digit",
     });
@@ -1659,15 +1538,10 @@ const monthlyFinancialData = useMemo(() => {
     months[month].income += Number(i.amount || 0);
   });
 
-  return Object.values(months);
+return Object.values(months).sort(
+  (a, b) => new Date(`01 ${a.month}`) - new Date(`01 ${b.month}`)
+);
 }, [expenses, income]);
-
-const profitTrendData = useMemo(() => {
-  return monthlyFinancialData.map((m) => ({
-    month: m.month,
-    profit: (m.income || 0) - (m.expenses || 0),
-  }));
-}, [monthlyFinancialData]);
 
   const activityItems = useMemo(() => {
     const list = [
@@ -1698,7 +1572,7 @@ const averageProgressionData = useMemo(() => {
   const months = {};
 
   filteredSeries.forEach((series) => {
-    const date = new Date(series.date);
+    const date = new Date(`${series.date}T12:00:00`);
 
     if (Number.isNaN(date.getTime())) return;
 
@@ -1783,7 +1657,7 @@ const thisMonthSummary = useMemo(() => {
   const year = now.getFullYear();
 
   const monthSeries = filteredSeries.filter((series) => {
-    const d = new Date(series.date);
+    const d = new Date(`${series.date}T12:00:00`);
     return d.getMonth() === month && d.getFullYear() === year;
   });
 
@@ -1805,14 +1679,14 @@ const thisMonthSummary = useMemo(() => {
 
   const incomeThisMonth = income
     .filter((i) => {
-      const d = new Date(i.date);
+      const d = new Date(`${i.date}T12:00:00`);
       return d.getMonth() === month && d.getFullYear() === year;
     })
     .reduce((sum, i) => sum + Number(i.amount || 0), 0);
 
   const expensesThisMonth = expenses
     .filter((e) => {
-      const d = new Date(e.date);
+      const d = new Date(`${e.date}T12:00:00`);
       return d.getMonth() === month && d.getFullYear() === year;
     })
     .reduce((sum, e) => sum + Number(e.amount || 0), 0);
@@ -1889,6 +1763,9 @@ const performanceSummary = useMemo(() => {
         ).toFixed(1)
       : "0.0";
 
+  const last5Average = avg(last5);
+  const last10Average = avg(last10);
+
   return {
     totalSeries: filteredSeries.length,
     bestSeries: filteredSeries.length
@@ -1896,18 +1773,18 @@ const performanceSummary = useMemo(() => {
       : 0,
     bestGame: allGames.length ? Math.max(...allGames) : 0,
     overallAverage: avg(allGames),
-    last5Average: avg(last5),
-    last10Average: avg(last10),
+    last5Average,
+    last10Average,
     trend:
-  Number(avg(last5)) > Number(avg(last10))
+    Number(last5Average) > Number(last10Average)
     ? "Trending Up 🔥"
-    : Number(avg(last5)) < Number(avg(last10))
+    : Number(last5Average) < Number(last10Average)
       ? "Trending Down 🧊"
       : "Holding Steady 🎯",
 trendColor:
-  Number(avg(last5)) > Number(avg(last10))
+  Number(last5Average) > Number(last10Average)
     ? appStyles.success
-    : Number(avg(last5)) < Number(avg(last10))
+    : Number(last5Average) < Number(last10Average)
       ? appStyles.danger
       : appStyles.accent,
   };
@@ -2056,7 +1933,7 @@ const houseStats = useMemo(() => {
     const monthly = {};
 
     houseSeries.forEach((series) => {
-      const month = new Date(series.date).toLocaleDateString(
+const month = new Date(`${series.date}T12:00:00`).toLocaleDateString(
         "en-US",
         {
           month: "long",
@@ -2156,7 +2033,7 @@ const bestHouse =
     currentStreak,
     bestHouse,
   };
-}, [filteredSeries]);
+}, [filteredSeries, houseAverages]);
 
 const lastUpdatedPerformance = useMemo(() => {
   const dates = filteredSeries

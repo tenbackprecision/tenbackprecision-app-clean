@@ -255,7 +255,7 @@ return (
       }
       style={inputStyle}
     >
-      <option value="">All Houses</option>
+      <option value="All">All Houses</option>
 
       {[...new Set(seriesList.map((s) => s.house))]
         .filter(Boolean)
@@ -277,7 +277,7 @@ return (
       }
       style={inputStyle}
     >
-      <option value="">All Events</option>
+      <option value="All">All Events</option>
 
       {[
         ...new Set([
@@ -296,15 +296,16 @@ return (
 
     <select
       value={perfFilters.year}
-      onChange={(e) =>
-        setPerfFilters({
-          ...perfFilters,
-          year: e.target.value,
-        })
-      }
-      style={inputStyle}
+onChange={(e) =>
+  setPerfFilters({
+    ...perfFilters,
+    year: e.target.value,
+    startDate: "",
+    endDate: "",
+  })
+}      style={inputStyle}
     >
-      <option value="">All Years</option>
+      <option value="all">All Years</option>
 
       {[...new Set(seriesList.map((s) => String(s.date || "").slice(0, 4)))]
         .filter(Boolean)
@@ -315,6 +316,28 @@ return (
           </option>
         ))}
     </select>
+<input
+  type="date"
+  value={perfFilters.startDate}
+onChange={(e) =>
+  setPerfFilters({
+    ...perfFilters,
+    year: "all",
+    startDate: e.target.value,
+  })
+}  style={inputStyle}
+/>
+<input
+  type="date"
+  value={perfFilters.endDate}
+onChange={(e) =>
+  setPerfFilters({
+    ...perfFilters,
+    year: "all",
+    endDate: e.target.value,
+  })
+}  style={inputStyle}
+/>
   </div>
 </div>
 <RecentSeries

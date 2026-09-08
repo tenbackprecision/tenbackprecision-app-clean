@@ -15,6 +15,8 @@ export default function AnalyticsPage({
   performanceSummary,
   houseStats,
   personalRecords,
+  achievements,
+  miniPerformanceStats,
   averageProgressionData,
   rollingAverageData,
   appStyles,
@@ -236,6 +238,113 @@ export default function AnalyticsPage({
     <div>
       <strong>200+ Games</strong>
       <div>{personalRecords.games200}</div>
+    </div>
+  </div>
+</div>
+<div
+  style={{
+    marginTop: 28,
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 18,
+    padding: 20,
+  }}
+>
+  <h2 style={{ marginTop: 0 }}>🏅 Achievement Tracker</h2>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone ? "1fr" : "repeat(2, 1fr)",
+      gap: 16,
+    }}
+  >
+    {achievements.map((achievement) => (
+      <div
+        key={achievement.label}
+        style={{
+          padding: 16,
+          borderRadius: 14,
+          border: `1px solid ${appStyles.cardBorder}`,
+          background: achievement.unlocked
+            ? "rgba(34,197,94,.12)"
+            : "rgba(255,255,255,.04)",
+        }}
+      >
+        <div style={{ fontSize: 26 }}>
+          {achievement.icon}
+        </div>
+
+        <div style={{ fontWeight: 800, marginTop: 8 }}>
+          {achievement.label}
+        </div>
+
+        <div
+          style={{
+            color: achievement.unlocked
+              ? appStyles.success
+              : appStyles.muted,
+            marginTop: 6,
+          }}
+        >
+          {achievement.detail}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+<div
+  style={{
+    marginTop: 28,
+    background: appStyles.card,
+    border: `1px solid ${appStyles.cardBorder}`,
+    borderRadius: 18,
+    padding: 20,
+  }}
+>
+  <h2 style={{ marginTop: 0 }}>⚡ Quick Performance Stats</h2>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: isPhone ? "1fr" : "repeat(2, 1fr)",
+      gap: 16,
+    }}
+  >
+    <div>
+      <strong>Games This Year</strong>
+      <div>{miniPerformanceStats.gamesThisYear}</div>
+    </div>
+
+    <div>
+      <strong>Top House</strong>
+      <div>{miniPerformanceStats.mostBowledHouse}</div>
+    </div>
+
+    <div>
+      <strong>Most Common Event</strong>
+      <div>{miniPerformanceStats.mostCommonEvent}</div>
+    </div>
+
+    <div>
+      <strong>Current 180+ Streak</strong>
+      <div>
+        {miniPerformanceStats.currentStreak > 0
+          ? `🔥 ${miniPerformanceStats.currentStreak} series`
+          : "No streak"}
+      </div>
+    </div>
+
+    <div>
+      <strong>Best House Average</strong>
+      <div>
+        {miniPerformanceStats.bestHouse
+          ? miniPerformanceStats.bestHouse.average
+          : "--"}
+      </div>
+      <div style={{ color: appStyles.muted, marginTop: 4 }}>
+        {miniPerformanceStats.bestHouse?.house || "No data"}
+      </div>
     </div>
   </div>
 </div>

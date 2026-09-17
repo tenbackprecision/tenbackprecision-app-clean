@@ -121,6 +121,18 @@ export default function RecentSeries({
     )}
   </div>
 )}
+{series.notes && (
+  <div
+    style={{
+      marginTop: 8,
+      color: appStyles.muted,
+      fontSize: 14,
+      fontStyle: "italic",
+    }}
+  >
+    Notes: {series.notes}
+  </div>
+)}
 <div
   style={{
     marginTop: 12,

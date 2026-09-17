@@ -484,6 +484,12 @@ useEffect(() => {
 useEffect(() => {
   setNewSeries((prev) => ({
     ...prev,
+    house: defaultHouse,
+  }));
+}, [defaultHouse]);
+useEffect(() => {
+  setNewSeries((prev) => ({
+    ...prev,
     type: defaultEventType,
   }));
 }, [defaultEventType]);
@@ -552,88 +558,111 @@ useEffect(() => {
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
+useEffect(() => {
+  if (!user) return;
 
-    setDataLoading(true);
+  setDataLoading(true);
 
-    const expensesQ = query(
-      collection(db, "expenses"),
-      where("uid", "==", user.uid),
-      orderBy("date", "desc")
-    );
+  const initialLoads = {
+    expenses: false,
+    income: false,
+    series: false,
+    equipment: false,
+  };
 
-    const incomeQ = query(
-      collection(db, "income"),
-      where("uid", "==", user.uid),
-      orderBy("date", "desc")
-    );
+  const markInitialLoadComplete = (key) => {
+    if (initialLoads[key]) return;
 
-    const seriesQ = query(
-      collection(db, "series"),
-      where("uid", "==", user.uid),
-      orderBy("date", "desc")
-    );
+    initialLoads[key] = true;
 
-const equipmentQ = query(
-  collection(db, "equipment"),
-  where("uid", "==", user.uid),
-  orderBy("name", "asc")
-);
+    if (Object.values(initialLoads).every(Boolean)) {
+      setDataLoading(false);
+    }
+  };
 
-    const unsubExpenses = onSnapshot(
-  expensesQ,
-  (snap) => {
-    setExpenses(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    setDataLoading(false);
-  },
-  (error) => {
-    console.error("Expenses snapshot error:", error);
-    setDataLoading(false);
-    showToast(`Expenses load failed: ${error.message}`, "error");
-  }
-);
+  const expensesQ = query(
+    collection(db, "expenses"),
+    where("uid", "==", user.uid),
+    orderBy("date", "desc")
+  );
 
-const unsubEquipment = onSnapshot(
-  equipmentQ,
-  (snap) => {
-    setEquipment(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  },
-  (error) => {
-    console.error("Equipment snapshot error:", error);
-    showToast(`Equipment load failed: ${error.message}`, "error");
-  }
-);
+  const incomeQ = query(
+    collection(db, "income"),
+    where("uid", "==", user.uid),
+    orderBy("date", "desc")
+  );
 
-const unsubIncome = onSnapshot(
-  incomeQ,
-  (snap) => {
-    setIncome(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  },
-  (error) => {
-    console.error("Income snapshot error:", error);
-    showToast(`Income load failed: ${error.message}`, "error");
-  }
-);
+  const seriesQ = query(
+    collection(db, "series"),
+    where("uid", "==", user.uid),
+    orderBy("date", "desc")
+  );
 
-const unsubSeries = onSnapshot(
-  seriesQ,
-  (snap) => {
-    setSeriesList(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-  },
-  (error) => {
-    console.error("Series snapshot error:", error);
-    showToast(`Series load failed: ${error.message}`, "error");
-  }
-);
+  const equipmentQ = query(
+    collection(db, "equipment"),
+    where("uid", "==", user.uid),
+    orderBy("name", "asc")
+  );
 
-    return () => {
-  unsubExpenses();
-  unsubIncome();
-  unsubSeries();
-  unsubEquipment();
-};
-  }, [user]);
+  const unsubExpenses = onSnapshot(
+    expensesQ,
+    (snap) => {
+      setExpenses(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      markInitialLoadComplete("expenses");
+    },
+    (error) => {
+      console.error("Expenses snapshot error:", error);
+      markInitialLoadComplete("expenses");
+      showToast(`Expenses load failed: ${error.message}`, "error");
+    }
+  );
+
+  const unsubIncome = onSnapshot(
+    incomeQ,
+    (snap) => {
+      setIncome(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      markInitialLoadComplete("income");
+    },
+    (error) => {
+      console.error("Income snapshot error:", error);
+      markInitialLoadComplete("income");
+      showToast(`Income load failed: ${error.message}`, "error");
+    }
+  );
+
+  const unsubSeries = onSnapshot(
+    seriesQ,
+    (snap) => {
+      setSeriesList(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      markInitialLoadComplete("series");
+    },
+    (error) => {
+      console.error("Series snapshot error:", error);
+      markInitialLoadComplete("series");
+      showToast(`Series load failed: ${error.message}`, "error");
+    }
+  );
+
+  const unsubEquipment = onSnapshot(
+    equipmentQ,
+    (snap) => {
+      setEquipment(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      markInitialLoadComplete("equipment");
+    },
+    (error) => {
+      console.error("Equipment snapshot error:", error);
+      markInitialLoadComplete("equipment");
+      showToast(`Equipment load failed: ${error.message}`, "error");
+    }
+  );
+
+  return () => {
+    unsubExpenses();
+    unsubIncome();
+    unsubSeries();
+    unsubEquipment();
+  };
+}, [user]);
 
   async function handleReceiptFile(file) {
     if (!file) return;
@@ -724,11 +753,12 @@ showToast("Receipt added.");
 ],
     oilPattern: defaultOilPattern,
 
-    primaryBall: defaultPrimaryBall,
-    primaryBallId: "",
+primaryBall: defaultPrimaryBall,
+primaryBallId:
+  equipment.find((ball) => ball.name === defaultPrimaryBall)?.id || "",
 
-    secondaryBall: defaultSecondaryBall,
-    secondaryBallId:
+secondaryBall: defaultSecondaryBall,
+secondaryBallId:
   equipment.find((ball) => ball.name === defaultSecondaryBall)?.id || "",
 
     feet: "",
@@ -918,23 +948,22 @@ function calculateBallStats(ball, allSeries) {
     };
   }
 
-  const matchingSeries = allSeries.filter((series) => {
-    const primaryId = String(series.primaryBallId || "").trim();
-    const secondaryId = String(series.secondaryBallId || "").trim();
+const matchingSeries = allSeries.filter((series) => {
+  const primaryId = String(series.primaryBallId || "").trim();
+  const secondaryId = String(series.secondaryBallId || "").trim();
 
-    const primaryName = String(series.primaryBall || "").trim().toLowerCase();
-    const secondaryName = String(series.secondaryBall || "").trim().toLowerCase();
+  const primaryName = String(series.primaryBall || "").trim().toLowerCase();
+  const secondaryName = String(series.secondaryBall || "").trim().toLowerCase();
 
-    const matchesById =
-      ballId && (primaryId === ballId || secondaryId === ballId);
+  const matchesPrimary =
+    (ballId && primaryId === ballId) ||
+    (cleanBallName && !primaryId && primaryName === cleanBallName);
 
-    const matchesByName =
-      cleanBallName &&
-      !primaryId &&
-      !secondaryId &&
-      (primaryName === cleanBallName || secondaryName === cleanBallName);
+  const matchesSecondary =
+    (ballId && secondaryId === ballId) ||
+    (cleanBallName && !secondaryId && secondaryName === cleanBallName);
 
-    return matchesById || matchesByName;
+  return matchesPrimary || matchesSecondary;
   });
 
   const games = matchingSeries.flatMap((series) =>
@@ -1327,14 +1356,47 @@ function convertBowlrRowsToGroupedSeries(rows) {
       .filter(Boolean)
       .join(" | ");
 
+    const primaryBallName = String(group.primaryBall || "").trim();
+    const secondaryBallName = String(group.secondaryBall || "").trim();
+
+const findMatchingEquipmentBall = (bowlrName) => {
+  const cleanBowlrName = String(bowlrName || "").trim().toLowerCase();
+
+  if (!cleanBowlrName) return null;
+
+  return (
+    equipment.find(
+      (ball) =>
+        String(ball.name || "").trim().toLowerCase() === cleanBowlrName
+    ) ||
+    equipment.find((ball) => {
+      const equipmentName = String(ball.name || "").trim().toLowerCase();
+
+      return (
+        equipmentName.startsWith(`${cleanBowlrName} `) ||
+        cleanBowlrName.startsWith(`${equipmentName} `)
+      );
+    }) ||
+    null
+  );
+};
+
+const matchedPrimaryBall = findMatchingEquipmentBall(primaryBallName);
+const matchedSecondaryBall = findMatchingEquipmentBall(secondaryBallName);
+
     return {
       uid: user.uid,
       date: group.date,
       house: group.house,
       type: group.type,
       oilPattern: String(group.oilPattern || "").trim(),
-      primaryBall: String(group.primaryBall || "").trim(),
-      secondaryBall: String(group.secondaryBall || "").trim(),
+
+      primaryBall: primaryBallName,
+      primaryBallId: matchedPrimaryBall?.id || "",
+
+      secondaryBall: secondaryBallName,
+      secondaryBallId: matchedSecondaryBall?.id || "",
+
       feet: "",
       target: "",
       breakpoint: "",
@@ -1375,30 +1437,43 @@ async function importBowlrGames() {
       .filter(Boolean)
   );
 
-  try {
-    for (const payload of groupedSeries) {
-      if (!payload.games.length) {
-        skipped++;
-        continue;
-      }
+try {
+  const addedSeries = [];
 
-      if (payload.bowlrId && existingBowlrIds.has(payload.bowlrId)) {
-        skipped++;
-        continue;
-      }
-
-      await addDoc(collection(db, "series"), {
-        ...payload,
-        createdAt: serverTimestamp(),
-      });
-
-      added++;
+  for (const payload of groupedSeries) {
+    if (!payload.games.length) {
+      skipped++;
+      continue;
     }
 
-    showToast(
-      `Bowlr grouped import complete: ${added} added, ${skipped} skipped.`
-    );
-  } catch (err) {
+    if (payload.bowlrId && existingBowlrIds.has(payload.bowlrId)) {
+      skipped++;
+      continue;
+    }
+
+    const addedRef = await addDoc(collection(db, "series"), {
+      ...payload,
+      createdAt: serverTimestamp(),
+    });
+
+    addedSeries.push({
+      ...payload,
+      id: addedRef.id,
+    });
+
+    added++;
+  }
+
+  if (addedSeries.length) {
+    await refreshEquipmentStats([
+      ...addedSeries,
+      ...seriesList,
+    ]);
+  }
+
+  showToast(
+    `Bowlr grouped import complete: ${added} added, ${skipped} skipped.`
+  );  } catch (err) {
     console.error(err);
     showToast("Bowlr import failed.", "error");
   }
@@ -1418,13 +1493,18 @@ async function deleteImportedBowlrGames() {
 
   if (!confirmed) return;
 
-  try {
-    for (const series of imported) {
-      await deleteDoc(doc(db, "series", series.id));
-    }
+try {
+  for (const series of imported) {
+    await deleteDoc(doc(db, "series", series.id));
+  }
 
-    showToast(`Deleted ${imported.length} Bowlr imported games.`);
-  } catch (err) {
+  const remainingSeries = seriesList.filter(
+    (series) => series.source !== "Bowlr"
+  );
+
+  await refreshEquipmentStats(remainingSeries);
+
+  showToast(`Deleted ${imported.length} Bowlr imported games.`);  } catch (err) {
     console.error(err);
     showToast("Could not delete Bowlr imported games.", "error");
   }
@@ -1501,46 +1581,55 @@ const matchesYear = filterYear === "all" || itemYear === filterYear;
     [filteredIncome]
   );
   const profit = totalIncome - totalExpenses;
-const monthlyFinancialData = useMemo(() => {
 
+const monthlyFinancialData = useMemo(() => {
   const months = {};
 
   expenses.forEach((e) => {
-const month = new Date(`${e.date}T12:00:00`).toLocaleDateString("en-US", {      month: "short",
+    const sortKey = monthKey(e.date);
+    if (!sortKey) return;
+
+    const month = new Date(`${e.date}T12:00:00`).toLocaleDateString("en-US", {
+      month: "short",
       year: "2-digit",
     });
 
-    if (!months[month]) {
-      months[month] = {
+    if (!months[sortKey]) {
+      months[sortKey] = {
+        sortKey,
         month,
         expenses: 0,
         income: 0,
       };
     }
 
-    months[month].expenses += Number(e.amount || 0);
+    months[sortKey].expenses += Number(e.amount || 0);
   });
 
   income.forEach((i) => {
+    const sortKey = monthKey(i.date);
+    if (!sortKey) return;
+
     const month = new Date(`${i.date}T12:00:00`).toLocaleDateString("en-US", {
       month: "short",
       year: "2-digit",
     });
 
-    if (!months[month]) {
-      months[month] = {
+    if (!months[sortKey]) {
+      months[sortKey] = {
+        sortKey,
         month,
         expenses: 0,
         income: 0,
       };
     }
 
-    months[month].income += Number(i.amount || 0);
+    months[sortKey].income += Number(i.amount || 0);
   });
 
-return Object.values(months).sort(
-  (a, b) => new Date(`01 ${a.month}`) - new Date(`01 ${b.month}`)
-);
+  return Object.values(months).sort((a, b) =>
+    a.sortKey.localeCompare(b.sortKey)
+  );
 }, [expenses, income]);
 
   const activityItems = useMemo(() => {
@@ -2122,12 +2211,20 @@ function handleEditSeries(series) {
     });
   }, 100);
 }
-  async function handleDelete(id) {
+
+async function handleDelete(id) {
   const confirmed = window.confirm("Delete this series?");
   if (!confirmed) return;
 
   try {
     await deleteDoc(doc(db, "series", id));
+
+    const remainingSeries = seriesList.filter(
+      (series) => series.id !== id
+    );
+
+    await refreshEquipmentStats(remainingSeries);
+
     showToast("Series deleted.");
   } catch (error) {
     console.error(error);

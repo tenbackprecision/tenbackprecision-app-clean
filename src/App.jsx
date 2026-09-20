@@ -45,7 +45,7 @@ import ReceiptsPage from "./components/ReceiptsPage";
 import SettingsPage from "./components/SettingsPage";
 import PerformancePage from "./components/PerformancePage";
 
-const APP_VERSION = "v1143";
+const APP_VERSION = "v1144 Bowlr Fix";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [

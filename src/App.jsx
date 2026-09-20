@@ -45,7 +45,7 @@ import ReceiptsPage from "./components/ReceiptsPage";
 import SettingsPage from "./components/SettingsPage";
 import PerformancePage from "./components/PerformancePage";
 
-const APP_VERSION = "v1144 Bowlr Fix";
+const APP_VERSION = "v1145 Duplicate Protection";
 const MAX_RECEIPT_SIZE_MB = 8;
 
 const expenseCategories = [
@@ -1431,11 +1431,29 @@ async function importBowlrGames() {
   let added = 0;
   let skipped = 0;
 
-  const existingBowlrIds = new Set(
-    seriesList
-      .map((series) => series.bowlrId)
-      .filter(Boolean)
-  );
+const existingBowlrIds = new Set(
+  seriesList
+    .map((series) => series.bowlrId)
+    .filter(Boolean)
+);
+
+const seriesFingerprint = (series) => {
+  const games = (series.games || [])
+    .map((game) => Number(game || 0))
+    .filter((game) => game > 0)
+    .join(",");
+
+  return [
+    String(series.date || "").trim(),
+    String(series.house || "").trim().toLowerCase(),
+    String(series.type || series.event || "").trim().toLowerCase(),
+    games,
+  ].join("|");
+};
+
+const existingSeriesFingerprints = new Set(
+  seriesList.map(seriesFingerprint)
+);
 
 try {
   const addedSeries = [];
@@ -1446,7 +1464,13 @@ try {
       continue;
     }
 
-    if (payload.bowlrId && existingBowlrIds.has(payload.bowlrId)) {
+    const duplicateBowlrId =
+      payload.bowlrId && existingBowlrIds.has(payload.bowlrId);
+
+    const duplicateSession =
+      existingSeriesFingerprints.has(seriesFingerprint(payload));
+
+    if (duplicateBowlrId || duplicateSession) {
       skipped++;
       continue;
     }
